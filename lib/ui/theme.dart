@@ -16,6 +16,8 @@ abstract final class KirainColors {
   static const tileUsed = Color(0x14000000);
   static const shadow = Color(0x1F3B2A20);
   static const starOff = Color(0xFFE6D9C3);
+  static const lockedTile = Color(0xFFE3DFD9);
+  static const lockedText = Color(0xFF9E958C);
 }
 
 const double kRadius = 16;

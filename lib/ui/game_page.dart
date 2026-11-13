@@ -2,46 +2,50 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../domain/economy.dart';
 import '../domain/game_engine.dart';
 import 'game_controller.dart';
+import 'level_select_page.dart';
+import 'shop_page.dart';
 import 'theme.dart';
 import 'widgets/answer_boxes.dart';
+import 'widgets/coin_badge.dart';
 import 'widgets/letter_board.dart';
 import 'widgets/zoom_image.dart';
 
 class GamePage extends ConsumerWidget {
-  const GamePage({super.key});
+  const GamePage({super.key, required this.levelIndex});
+
+  final int levelIndex;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(gameControllerProvider);
-    final controller = ref.read(gameControllerProvider.notifier);
+    final provider = gameControllerProvider(levelIndex);
+    final state = ref.watch(provider);
+    final controller = ref.read(provider.notifier);
 
-    ref.listen(gameControllerProvider.select((s) => s.snapshot.wrongCount), (
-      prev,
-      next,
-    ) {
+    ref.listen(provider.select((s) => s.snapshot.wrongCount), (prev, next) {
       if (prev != null && next > prev) HapticFeedback.mediumImpact();
     });
-    ref.listen(gameControllerProvider.select((s) => s.snapshot.status), (
-      prev,
-      next,
-    ) {
+    ref.listen(provider.select((s) => s.snapshot.status), (prev, next) {
       if (prev != GameStatus.correct && next == GameStatus.correct) {
         HapticFeedback.lightImpact();
-        _showCorrectDialog(context, ref);
       }
     });
-
-    if (state.finished) {
-      return _FinishView(
-        totalCoins: state.totalCoins,
-        onRestart: controller.restart,
-      );
-    }
+    // Dialog muncul setelah hasil level tersimpan.
+    ref.listen(provider.select((s) => s.saved), (prev, next) {
+      if (prev != true && next) _showCorrectDialog(context, ref);
+    });
 
     final s = state.snapshot;
     final text = Theme.of(context).textTheme;
+
+    Future<void> useHint(Future<HintResult> Function() hint) async {
+      final result = await hint();
+      if (result == HintResult.notEnoughCoins && context.mounted) {
+        _showNotEnoughCoins(context);
+      }
+    }
 
     return Scaffold(
       body: SafeArea(
@@ -49,7 +53,7 @@ class GamePage extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Column(
             children: [
-              _TopBar(level: state.levelIndex + 1, coins: state.totalCoins),
+              _TopBar(level: state.levelIndex + 1),
               const SizedBox(height: 8),
               Expanded(
                 child: Center(
@@ -78,25 +82,30 @@ class GamePage extends ConsumerWidget {
                   _ActionButton(
                     icon: Icons.zoom_out_map,
                     label: 'Zoom Out',
+                    cost: null,
                     onPressed: s.canZoomOut ? controller.zoomOut : null,
                   ),
                   const SizedBox(width: 8),
                   _ActionButton(
                     icon: Icons.lightbulb_outline,
                     label: 'Buka Huruf',
-                    onPressed: s.canReveal ? controller.revealLetter : null,
+                    cost: Economy.revealLetterCost,
+                    onPressed: s.canReveal
+                        ? () => useHint(controller.revealLetter)
+                        : null,
                   ),
                   const SizedBox(width: 8),
                   _ActionButton(
                     icon: Icons.backspace_outlined,
                     label: 'Hapus Huruf Salah',
+                    cost: Economy.removeWrongCost,
                     onPressed: s.canRemoveWrong
-                        ? controller.removeWrongLetters
+                        ? () => useHint(controller.removeWrongLetters)
                         : null,
                   ),
                 ],
               ),
-              Text('Buka huruf / hapus huruf: -10 poin', style: text.bodySmall),
+              Text('Zoom Out gratis · hint: -10 poin', style: text.bodySmall),
               // Ruang untuk banner iklan (tahap berikutnya).
               const SizedBox(height: 60),
             ],
@@ -106,8 +115,51 @@ class GamePage extends ConsumerWidget {
     );
   }
 
+  void _showNotEnoughCoins(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Koin tidak cukup'),
+        content: const Text('Dapatkan koin tambahan di Toko.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              Navigator.of(
+                context,
+              ).push(MaterialPageRoute<void>(builder: (_) => const ShopPage()));
+            },
+            child: const Text('Ke Toko'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _goNext(BuildContext context, bool isLastLevel) {
+    final navigator = Navigator.of(context);
+    if (isLastLevel) {
+      navigator.pushAndRemoveUntil(
+        MaterialPageRoute<void>(builder: (_) => const LevelSelectPage()),
+        (route) => route.isFirst,
+      );
+    } else {
+      navigator.pushReplacement(
+        MaterialPageRoute<void>(
+          builder: (_) => GamePage(levelIndex: levelIndex + 1),
+        ),
+      );
+    }
+  }
+
   void _showCorrectDialog(BuildContext context, WidgetRef ref) {
-    final s = ref.read(gameControllerProvider).snapshot;
+    final state = ref.read(gameControllerProvider(levelIndex));
+    final s = state.snapshot;
+    final firstClear = state.firstClear ?? false;
     showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -139,7 +191,10 @@ class GamePage extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 Text('${s.score} poin', style: text.titleLarge),
-                Text('+${s.coins} koin', style: text.titleMedium),
+                Text(
+                  firstClear ? '+${s.coins} koin' : 'Level diulang, tanpa koin',
+                  style: text.titleMedium,
+                ),
               ],
             ),
             actionsAlignment: MainAxisAlignment.center,
@@ -147,9 +202,9 @@ class GamePage extends ConsumerWidget {
               FilledButton(
                 onPressed: () {
                   Navigator.of(dialogContext).pop();
-                  ref.read(gameControllerProvider.notifier).nextLevel();
+                  _goNext(context, state.isLastLevel);
                 },
-                child: const Text('Lanjut'),
+                child: Text(state.isLastLevel ? 'Pilih Level' : 'Lanjut'),
               ),
             ],
           ),
@@ -160,10 +215,9 @@ class GamePage extends ConsumerWidget {
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.level, required this.coins});
+  const _TopBar({required this.level});
 
   final int level;
-  final int coins;
 
   @override
   Widget build(BuildContext context) {
@@ -182,26 +236,7 @@ class _TopBar extends StatelessWidget {
             style: text.titleLarge?.copyWith(fontWeight: FontWeight.w600),
           ),
         ),
-        Container(
-          constraints: const BoxConstraints(minHeight: kMinTap),
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: KirainColors.surface,
-            borderRadius: kBorderRadius,
-            boxShadow: kSoftShadow,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.monetization_on_rounded,
-                color: KirainColors.accent,
-              ),
-              const SizedBox(width: 4),
-              Text('$coins', style: text.titleMedium),
-            ],
-          ),
-        ),
+        const CoinBadge(),
       ],
     );
   }
@@ -239,11 +274,15 @@ class _ActionButton extends StatelessWidget {
   const _ActionButton({
     required this.icon,
     required this.label,
+    required this.cost,
     required this.onPressed,
   });
 
   final IconData icon;
   final String label;
+
+  /// Harga koin, null jika gratis.
+  final int? cost;
   final VoidCallback? onPressed;
 
   @override
@@ -264,51 +303,27 @@ class _ActionButton extends StatelessWidget {
               maxLines: 2,
               style: const TextStyle(fontSize: 12),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _FinishView extends StatelessWidget {
-  const _FinishView({required this.totalCoins, required this.onRestart});
-
-  final int totalCoins;
-  final VoidCallback onRestart;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
+            Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
-                  Icons.emoji_events_rounded,
-                  size: 96,
-                  color: KirainColors.accent,
-                ),
-                const SizedBox(height: 16),
+                if (cost != null) ...[
+                  const Icon(
+                    Icons.monetization_on_rounded,
+                    size: 14,
+                    color: KirainColors.accent,
+                  ),
+                  const SizedBox(width: 2),
+                ],
                 Text(
-                  'Semua level selesai!',
-                  textAlign: TextAlign.center,
-                  style: text.headlineSmall,
-                ),
-                const SizedBox(height: 8),
-                Text('Total koin: $totalCoins', style: text.titleLarge),
-                const SizedBox(height: 24),
-                FilledButton(
-                  onPressed: onRestart,
-                  child: const Text('Main Lagi'),
+                  cost == null ? 'Gratis' : '$cost',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
             ),
-          ),
+          ],
         ),
       ),
     );

@@ -1,66 +1,84 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/dummy_levels.dart';
 import '../data/level.dart';
+import '../domain/economy.dart';
 import '../domain/game_engine.dart';
+import '../state/progress_providers.dart';
+
+enum HintResult { used, notEnoughCoins, unavailable }
 
 class GameState {
   const GameState({
     required this.levelIndex,
     required this.level,
     required this.snapshot,
-    required this.totalCoins,
-    required this.finished,
     required this.levelCount,
+    this.firstClear,
   });
 
   final int levelIndex;
   final Level level;
   final GameSnapshot snapshot;
-  final int totalCoins;
-  final bool finished;
   final int levelCount;
+
+  /// null selama level belum selesai disimpan; true jika baru pertama kali
+  /// selesai (koin diberikan), false jika level diulang.
+  final bool? firstClear;
+
+  bool get isLastLevel => levelIndex >= levelCount - 1;
+  bool get saved => firstClear != null;
+
+  GameState copyWith({GameSnapshot? snapshot, bool? firstClear}) => GameState(
+    levelIndex: levelIndex,
+    level: level,
+    snapshot: snapshot ?? this.snapshot,
+    levelCount: levelCount,
+    firstClear: firstClear ?? this.firstClear,
+  );
 }
 
-final levelsProvider = Provider<List<Level>>((ref) => dummyLevels);
+/// Argumen family = indeks level di levelsProvider.
+final gameControllerProvider = NotifierProvider.autoDispose
+    .family<GameController, GameState, int>(GameController.new);
 
-final gameControllerProvider = NotifierProvider<GameController, GameState>(
-  GameController.new,
-);
-
-/// Menghubungkan GameEngine ke UI. Aturan game tetap di domain/.
+/// Menghubungkan GameEngine dan progress ke UI. Aturan game tetap di domain/.
 class GameController extends Notifier<GameState> {
+  GameController(this.levelIndex);
+
+  final int levelIndex;
   late GameEngine _engine;
-  late List<Level> _levels;
+  bool _completing = false;
+  bool _hintBusy = false;
 
   @override
   GameState build() {
-    _levels = ref.watch(levelsProvider);
-    return _startLevel(0, totalCoins: 0);
-  }
-
-  GameState _startLevel(int index, {required int totalCoins}) {
-    final level = _levels[index];
+    final levels = ref.watch(levelsProvider);
+    final level = levels[levelIndex];
     _engine = GameEngine(level.answer);
+    _completing = false;
     return GameState(
-      levelIndex: index,
+      levelIndex: levelIndex,
       level: level,
       snapshot: _engine.snapshot,
-      totalCoins: totalCoins,
-      finished: false,
-      levelCount: _levels.length,
+      levelCount: levels.length,
     );
   }
 
   void _emit() {
-    state = GameState(
-      levelIndex: state.levelIndex,
-      level: state.level,
-      snapshot: _engine.snapshot,
-      totalCoins: state.totalCoins,
-      finished: state.finished,
-      levelCount: state.levelCount,
-    );
+    state = state.copyWith(snapshot: _engine.snapshot);
+    if (_engine.status == GameStatus.correct) _complete();
+  }
+
+  /// Simpan hasil level sekali saja saat jawaban benar.
+  Future<void> _complete() async {
+    if (_completing) return;
+    _completing = true;
+    final s = state.snapshot;
+    final firstClear = await ref
+        .read(progressProvider.notifier)
+        .completeLevel(state.level.id, s.score, s.stars, coins: s.coins);
+    if (!ref.mounted) return;
+    state = state.copyWith(firstClear: firstClear);
   }
 
   void tapTile(int id) {
@@ -73,38 +91,39 @@ class GameController extends Notifier<GameState> {
     _emit();
   }
 
+  /// Gratis, hanya mengurangi poin.
   void zoomOut() {
     if (_engine.zoomOut()) _emit();
   }
 
-  void revealLetter() {
-    if (_engine.revealLetter()) _emit();
-  }
+  Future<HintResult> revealLetter() => _paidHint(
+    available: state.snapshot.canReveal,
+    cost: Economy.revealLetterCost,
+    apply: _engine.revealLetter,
+  );
 
-  void removeWrongLetters() {
-    if (_engine.removeWrongLetters()) _emit();
-  }
+  Future<HintResult> removeWrongLetters() => _paidHint(
+    available: state.snapshot.canRemoveWrong,
+    cost: Economy.removeWrongCost,
+    apply: _engine.removeWrongLetters,
+  );
 
-  /// Simpan koin level ini lalu pindah ke level berikutnya / layar selesai.
-  void nextLevel() {
-    if (_engine.status != GameStatus.correct) return;
-    final coins = state.totalCoins + _engine.score.coins;
-    final next = state.levelIndex + 1;
-    if (next >= _levels.length) {
-      state = GameState(
-        levelIndex: state.levelIndex,
-        level: state.level,
-        snapshot: _engine.snapshot,
-        totalCoins: coins,
-        finished: true,
-        levelCount: state.levelCount,
-      );
-    } else {
-      state = _startLevel(next, totalCoins: coins);
+  Future<HintResult> _paidHint({
+    required bool available,
+    required int cost,
+    required bool Function() apply,
+  }) async {
+    if (!available || _hintBusy) return HintResult.unavailable;
+    _hintBusy = true;
+    try {
+      final paid = await ref.read(progressProvider.notifier).spendCoins(cost);
+      if (!paid) return HintResult.notEnoughCoins;
+      if (!ref.mounted) return HintResult.unavailable;
+      apply();
+      _emit();
+      return HintResult.used;
+    } finally {
+      _hintBusy = false;
     }
-  }
-
-  void restart() {
-    state = _startLevel(0, totalCoins: 0);
   }
 }

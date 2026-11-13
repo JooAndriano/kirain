@@ -5,3 +5,4 @@
 - Selalu jalankan `flutter analyze` dan `flutter test` sebelum menyatakan selesai.
 - Tanpa login. Progress nanti disimpan lokal lewat satu repository.
 - Jangan tambah paket di luar yang diminta.
+- Semua akses data progress lewat ProgressRepository (abstract). Implementasi lokal: LocalProgressRepository (shared_preferences). UI/notifier tidak boleh memanggil shared_preferences langsung.
