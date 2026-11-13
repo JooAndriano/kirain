@@ -1,7 +1,13 @@
 # Miscellaneous
 *.class
 *.lock
+!pubspec.lock
 *.log
+
+# IDE
+.idea/
+*.iml
+.vscode/
 *.pyc
 *.swp
 .buildlog/
