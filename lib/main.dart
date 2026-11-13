@@ -3,9 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'data/local_progress_repository.dart';
+import 'data/local_settings_repository.dart';
+import 'services/game_audio.dart';
 import 'state/progress_providers.dart';
+import 'state/settings_providers.dart';
 import 'ui/splash_page.dart';
 import 'ui/theme.dart';
+import 'ui/widgets/background_music.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,6 +20,10 @@ Future<void> main() async {
         progressRepositoryProvider.overrideWithValue(
           LocalProgressRepository(prefs),
         ),
+        settingsRepositoryProvider.overrideWithValue(
+          LocalSettingsRepository(prefs),
+        ),
+        gameAudioProvider.overrideWithValue(AudioplayersGameAudio()),
       ],
       child: const KirainApp(),
     ),
@@ -32,6 +40,8 @@ class KirainApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: buildKirainTheme(),
       home: const SplashPage(),
+      builder: (context, child) =>
+          BackgroundMusic(child: child ?? const SizedBox.shrink()),
     );
   }
 }

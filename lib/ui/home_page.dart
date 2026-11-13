@@ -9,6 +9,7 @@ import 'splash_page.dart';
 import 'theme.dart';
 import 'widgets/coin_badge.dart';
 import 'widgets/daily_bonus_dialog.dart';
+import 'widgets/settings_dialog.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -50,9 +51,16 @@ class _HomePageState extends ConsumerState<HomePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Align(
-                    alignment: Alignment.topRight,
-                    child: CoinBadge(),
+                  Row(
+                    children: [
+                      IconButton(
+                        tooltip: 'Pengaturan',
+                        icon: const Icon(Icons.settings_rounded),
+                        onPressed: () => showSettingsDialog(context),
+                      ),
+                      const Spacer(),
+                      const CoinBadge(),
+                    ],
                   ),
                   const Spacer(),
                   ClipRRect(

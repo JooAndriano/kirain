@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../domain/economy.dart';
 import '../domain/game_engine.dart';
+import '../state/settings_providers.dart';
 import 'game_controller.dart';
 import 'level_select_page.dart';
 import 'shop_page.dart';
@@ -25,11 +25,11 @@ class GamePage extends ConsumerWidget {
     final controller = ref.read(provider.notifier);
 
     ref.listen(provider.select((s) => s.snapshot.wrongCount), (prev, next) {
-      if (prev != null && next > prev) HapticFeedback.mediumImpact();
+      if (prev != null && next > prev) ref.read(gameFeedbackProvider).wrong();
     });
     ref.listen(provider.select((s) => s.snapshot.status), (prev, next) {
       if (prev != GameStatus.correct && next == GameStatus.correct) {
-        HapticFeedback.lightImpact();
+        ref.read(gameFeedbackProvider).correct();
       }
     });
     // Dialog muncul setelah hasil level tersimpan.
