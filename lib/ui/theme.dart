@@ -5,7 +5,9 @@ import 'package:google_fonts/google_fonts.dart';
 abstract final class KirainColors {
   static const primary = Color(0xFFFF8A3D);
   static const accent = Color(0xFFFFC93C);
-  static const background = Color(0xFFFFF6E5);
+
+  /// Sama dengan latar gambar logo dan splash Android (res/values/colors.xml).
+  static const background = Color(0xFFFCF1D6);
   static const text = Color(0xFF3B2A20);
 
   static const surface = Color(0xFFFFFFFF);

@@ -5,7 +5,7 @@ import '../state/progress_providers.dart';
 import 'game_page.dart';
 import 'level_select_page.dart';
 import 'shop_page.dart';
-import 'theme.dart';
+import 'splash_page.dart';
 import 'widgets/coin_badge.dart';
 import 'widgets/daily_bonus_dialog.dart';
 
@@ -55,18 +55,14 @@ class _HomePageState extends ConsumerState<HomePage> {
                     child: CoinBadge(),
                   ),
                   const Spacer(),
-                  const Icon(
-                    Icons.image_search_rounded,
-                    size: 96,
-                    color: KirainColors.primary,
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(32),
+                    child: Image.asset(kLogoAsset, height: 140),
                   ),
-                  Text(
-                    'Kirain',
-                    textAlign: TextAlign.center,
-                    style: text.displayMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: KirainColors.primary,
-                    ),
+                  const SizedBox(height: 16),
+                  Hero(
+                    tag: kWordmarkHeroTag,
+                    child: Image.asset(kWordmarkAsset, height: 96),
                   ),
                   Text(
                     'Tebak gambarnya!',

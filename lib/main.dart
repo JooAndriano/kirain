@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'data/local_progress_repository.dart';
 import 'state/progress_providers.dart';
-import 'ui/home_page.dart';
+import 'ui/splash_page.dart';
 import 'ui/theme.dart';
 
 Future<void> main() async {
@@ -31,7 +31,7 @@ class KirainApp extends StatelessWidget {
       title: 'Kirain',
       debugShowCheckedModeBanner: false,
       theme: buildKirainTheme(),
-      home: const HomePage(),
+      home: const SplashPage(),
     );
   }
 }

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Sama dengan KirainColors.background di lib/ui/theme.dart. -->
+    <color name="splash_background">#FCF1D6</color>
+    <color name="ic_launcher_background">#FCF1D6</color>
+</resources>
