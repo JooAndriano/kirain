@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/image_url_resolver.dart';
 import '../domain/economy.dart';
 import '../domain/game_engine.dart';
 import '../state/settings_providers.dart';
@@ -58,7 +59,7 @@ class GamePage extends ConsumerWidget {
               Expanded(
                 child: Center(
                   child: ZoomImage(
-                    imagePath: state.level.imagePath,
+                    imagePath: localLevelAsset(state.level.imageFile),
                     scale: s.scale,
                     focusX: state.level.focusX,
                     focusY: state.level.focusY,

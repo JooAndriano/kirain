@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../state/progress_providers.dart';
+import 'firebase_check_page.dart';
 import 'game_page.dart';
 import 'level_select_page.dart';
 import 'shop_page.dart';
@@ -58,6 +60,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                         icon: const Icon(Icons.settings_rounded),
                         onPressed: () => showSettingsDialog(context),
                       ),
+                      if (kDebugMode)
+                        IconButton(
+                          tooltip: 'Cek Firebase (debug)',
+                          icon: const Icon(Icons.bug_report_outlined, size: 20),
+                          onPressed: () => _push(const FirebaseCheckPage()),
+                        ),
                       const Spacer(),
                       const CoinBadge(),
                     ],

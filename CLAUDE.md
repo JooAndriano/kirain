@@ -6,3 +6,6 @@
 - Tanpa login. Progress nanti disimpan lokal lewat satu repository.
 - Jangan tambah paket di luar yang diminta.
 - Semua akses data progress lewat ProgressRepository (abstract). Implementasi lokal: LocalProgressRepository (shared_preferences). UI/notifier tidak boleh memanggil shared_preferences langsung.
+- Firebase hanya diakses lewat repository (LevelRepository, RemoteSettings). Widget tidak memanggil Firebase langsung.
+- App hanya MEMBACA Firestore, tidak pernah menulis.
+- Level menyimpan nama file gambar (imageFile), bukan URL. URL = imageBaseUrl (Remote Config) + imageFile.
