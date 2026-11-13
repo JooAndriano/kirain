@@ -92,7 +92,6 @@ class _SplashPageState extends ConsumerState<SplashPage>
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
     return Scaffold(
       backgroundColor: KirainColors.background,
       body: Center(
@@ -128,10 +127,7 @@ class _SplashPageState extends ConsumerState<SplashPage>
               const SizedBox(height: 8),
               FadeTransition(
                 opacity: _tagFade,
-                child: Text(
-                  'Tebak gambarnya!',
-                  style: text.titleMedium?.copyWith(color: KirainColors.text),
-                ),
+                child: Text('Tebak gambarnya!', style: kirainTaglineStyle()),
               ),
             ],
           ),

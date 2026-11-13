@@ -6,6 +6,7 @@ import 'game_page.dart';
 import 'level_select_page.dart';
 import 'shop_page.dart';
 import 'splash_page.dart';
+import 'theme.dart';
 import 'widgets/coin_badge.dart';
 import 'widgets/daily_bonus_dialog.dart';
 
@@ -31,7 +32,6 @@ class _HomePageState extends ConsumerState<HomePage> {
   Widget build(BuildContext context) {
     final progress = ref.watch(progressProvider);
     final levels = ref.watch(levelsProvider);
-    final text = Theme.of(context).textTheme;
 
     return Scaffold(
       body: SafeArea(
@@ -67,7 +67,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   Text(
                     'Tebak gambarnya!',
                     textAlign: TextAlign.center,
-                    style: text.titleMedium,
+                    style: kirainTaglineStyle(),
                   ),
                   const Spacer(),
                   FilledButton.icon(

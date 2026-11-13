@@ -20,7 +20,25 @@ abstract final class KirainColors {
   static const starOff = Color(0xFFE6D9C3);
   static const lockedTile = Color(0xFFE3DFD9);
   static const lockedText = Color(0xFF9E958C);
+
+  /// Oranye lebih tua dari [primary] agar tagline tetap terbaca di latar krem.
+  static const tagline = Color(0xFFE8661F);
+
+  /// Bayangan krem, senada dengan bayangan wordmark Kirain.
+  static const taglineShadow = Color(0xFFE8D2AC);
 }
+
+/// Gaya tagline "Tebak gambarnya!": bulat, tebal, senada dengan wordmark.
+TextStyle kirainTaglineStyle() => GoogleFonts.baloo2(
+  fontSize: 24,
+  fontWeight: FontWeight.w800,
+  letterSpacing: 0.5,
+  height: 1.1,
+  color: KirainColors.tagline,
+  shadows: const [
+    Shadow(color: KirainColors.taglineShadow, offset: Offset(0, 2)),
+  ],
+);
 
 const double kRadius = 16;
 const double kMinTap = 48;
