@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/level.dart';
 import '../domain/economy.dart';
 import '../domain/game_engine.dart';
+import '../services/analytics.dart';
 import '../state/progress_providers.dart';
 
 enum HintResult { used, notEnoughCoins, unavailable }
@@ -56,6 +57,7 @@ class GameController extends Notifier<GameState> {
     final level = levels[levelIndex];
     _engine = GameEngine(level.answer);
     _completing = false;
+    ref.read(analyticsProvider).levelStart(level.id);
     return GameState(
       levelIndex: levelIndex,
       level: level,
@@ -78,6 +80,14 @@ class GameController extends Notifier<GameState> {
         .read(progressProvider.notifier)
         .completeLevel(state.level.id, s.score, s.stars, coins: s.coins);
     if (!ref.mounted) return;
+    ref
+        .read(analyticsProvider)
+        .levelComplete(
+          state.level.id,
+          score: s.score,
+          stars: s.stars,
+          firstClear: firstClear,
+        );
     state = state.copyWith(firstClear: firstClear);
   }
 
@@ -97,18 +107,21 @@ class GameController extends Notifier<GameState> {
   }
 
   Future<HintResult> revealLetter() => _paidHint(
+    name: 'reveal_letter',
     available: state.snapshot.canReveal,
     cost: Economy.revealLetterCost,
     apply: _engine.revealLetter,
   );
 
   Future<HintResult> removeWrongLetters() => _paidHint(
+    name: 'remove_wrong_letters',
     available: state.snapshot.canRemoveWrong,
     cost: Economy.removeWrongCost,
     apply: _engine.removeWrongLetters,
   );
 
   Future<HintResult> _paidHint({
+    required String name,
     required bool available,
     required int cost,
     required bool Function() apply,
@@ -120,6 +133,7 @@ class GameController extends Notifier<GameState> {
       if (!paid) return HintResult.notEnoughCoins;
       if (!ref.mounted) return HintResult.unavailable;
       apply();
+      ref.read(analyticsProvider).hintUsed(state.level.id, name, cost: cost);
       _emit();
       return HintResult.used;
     } finally {

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "211458836468",
+    "project_id": "kirain-40f27",
+    "storage_bucket": "kirain-40f27.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:211458836468:android:b2b28ea5184a8598579ba1",
+        "android_client_info": {
+          "package_name": "id.jivottama.kirain"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCkcLJ6vP1ZkckLSet6BRDtW9emTKLqJtE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

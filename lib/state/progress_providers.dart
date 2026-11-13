@@ -6,6 +6,7 @@ import '../data/progress.dart';
 import '../data/progress_repository.dart';
 import '../domain/daily_bonus.dart';
 import '../domain/progress_rules.dart';
+import '../services/analytics.dart';
 
 final levelsProvider = Provider<List<Level>>((ref) => dummyLevels);
 
@@ -95,6 +96,9 @@ class ProgressNotifier extends AsyncNotifier<Progress> {
         dailyStreak: offer.newStreak,
       ),
     );
+    ref
+        .read(analyticsProvider)
+        .dailyBonusClaimed(amount: offer.amount, streak: offer.newStreak);
     return offer.amount;
   }
 }
