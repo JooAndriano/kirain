@@ -1,6 +1,6 @@
-import 'level.dart';
+import 'puzzle.dart';
 
-/// Menggabungkan base URL (Remote Config) dengan nama file gambar level.
+/// Menggabungkan base URL (Remote Config) dengan nama file gambar puzzle.
 /// Dart murni, tanpa Flutter.
 class ImageUrlResolver {
   const ImageUrlResolver._();
@@ -26,10 +26,10 @@ class ImageUrlResolver {
   }
 }
 
-/// Folder aset lokal untuk level dummy.
+/// Folder aset lokal untuk puzzle dummy.
 const String kLocalLevelImageDir = 'assets/images/';
 
-/// Path aset lokal untuk gambar level dummy.
+/// Path aset lokal untuk gambar puzzle dummy.
 String localLevelAsset(String imageFile) =>
     ImageUrlResolver.resolve(kLocalLevelImageDir, imageFile);
 
@@ -68,8 +68,10 @@ class RemoteLevelImage extends LevelImageSource {
   String toString() => 'RemoteLevelImage($url)';
 }
 
-/// Dummy -> aset lokal; level Firestore -> imageBaseUrl + imageFile.
-LevelImageSource levelImageSource(Level level, String imageBaseUrl) =>
-    level.isLocal
-    ? LocalLevelImage(localLevelAsset(level.imageFile))
-    : RemoteLevelImage(ImageUrlResolver.resolve(imageBaseUrl, level.imageFile));
+/// Dummy -> aset lokal; puzzle Firestore -> imageBaseUrl + imageFile.
+LevelImageSource puzzleImageSource(Puzzle puzzle, String imageBaseUrl) =>
+    puzzle.isLocal
+    ? LocalLevelImage(localLevelAsset(puzzle.imageFile))
+    : RemoteLevelImage(
+        ImageUrlResolver.resolve(imageBaseUrl, puzzle.imageFile),
+      );

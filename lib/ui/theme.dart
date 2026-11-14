@@ -31,7 +31,7 @@ abstract final class KirainColors {
   static const offlineBanner = Color(0xFF5B4A3F);
   static const onOfflineBanner = Color(0xFFFFFFFF);
 
-  /// Tile kerangka saat daftar level dimuat.
+  /// Tile kerangka saat daftar stage dimuat.
   static const skeleton = Color(0xFFEDE3D0);
 }
 

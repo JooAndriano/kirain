@@ -1,9 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/image_url_resolver.dart';
-import '../data/level.dart';
-import '../data/level_repository.dart';
+import '../data/puzzle.dart';
+import '../data/puzzle_repository.dart';
 import '../data/remote_settings.dart';
+import '../domain/stage.dart';
 
 /// Hasil Firebase.initializeApp di main.dart.
 class FirebaseStatus {
@@ -19,9 +20,9 @@ final firebaseStatusProvider = Provider<FirebaseStatus>(
   (ref) => const FirebaseStatus.failed('belum diinisialisasi'),
 );
 
-/// Di-override di main.dart dengan FirestoreLevelRepository bila Firebase siap.
-final levelRepositoryProvider = Provider<LevelRepository>(
-  (ref) => const UnavailableLevelRepository('Firebase belum diinisialisasi'),
+/// Di-override di main.dart dengan FirestorePuzzleRepository bila Firebase siap.
+final puzzleRepositoryProvider = Provider<PuzzleRepository>(
+  (ref) => const UnavailablePuzzleRepository('Firebase belum diinisialisasi'),
 );
 
 /// Di-override di main.dart dengan FirebaseRemoteSettings bila Firebase siap.
@@ -34,54 +35,50 @@ class FirebaseCheckReport {
   const FirebaseCheckReport({
     required this.status,
     required this.imageBaseUrl,
-    this.levels,
-    this.levelError,
+    this.puzzles,
+    this.puzzleError,
   });
 
   final FirebaseStatus status;
   final String imageBaseUrl;
 
-  /// null jika pengambilan gagal (lihat [levelError]).
-  final List<Level>? levels;
-  final String? levelError;
+  /// null jika pengambilan gagal (lihat [puzzleError]).
+  final List<Puzzle>? puzzles;
+  final String? puzzleError;
 
-  Level? get firstLevel =>
-      levels == null || levels!.isEmpty ? null : levels!.first;
+  /// Jumlah stage lengkap yang bisa dimainkan dari [puzzles].
+  int get stageCount => puzzles == null ? 0 : buildStages(puzzles!).length;
 
-  /// Tautan pembuatan index Firestore, jika error-nya karena index belum ada.
-  String? get indexUrl => levelError == null
+  Puzzle? get firstPuzzle =>
+      puzzles == null || puzzles!.isEmpty ? null : puzzles!.first;
+
+  String? get firstImageUrl => firstPuzzle == null
       ? null
-      : RegExp(
-          r'https://console\.firebase\.google\.com/\S*indexes\S*',
-        ).firstMatch(levelError!)?.group(0);
-
-  String? get firstImageUrl => firstLevel == null
-      ? null
-      : ImageUrlResolver.resolve(imageBaseUrl, firstLevel!.imageFile);
+      : ImageUrlResolver.resolve(imageBaseUrl, firstPuzzle!.imageFile);
 }
 
-/// Muat ulang Remote Config lalu ambil level. Tidak pernah error: kegagalan
-/// dicatat di [FirebaseCheckReport.levelError]. Invalidate untuk "Muat ulang".
+/// Muat ulang Remote Config lalu ambil puzzle. Tidak pernah error: kegagalan
+/// dicatat di [FirebaseCheckReport.puzzleError]. Invalidate untuk "Muat ulang".
 final firebaseCheckProvider = FutureProvider.autoDispose<FirebaseCheckReport>((
   ref,
 ) async {
   final status = ref.watch(firebaseStatusProvider);
   final settings = ref.watch(remoteSettingsProvider);
-  final repo = ref.watch(levelRepositoryProvider);
+  final repo = ref.watch(puzzleRepositoryProvider);
 
   await settings.init();
   try {
-    final levels = await repo.fetchLevels();
+    final puzzles = await repo.fetchPuzzles();
     return FirebaseCheckReport(
       status: status,
       imageBaseUrl: settings.imageBaseUrl,
-      levels: levels,
+      puzzles: puzzles,
     );
   } catch (e) {
     return FirebaseCheckReport(
       status: status,
       imageBaseUrl: settings.imageBaseUrl,
-      levelError: '$e',
+      puzzleError: '$e',
     );
   }
 });

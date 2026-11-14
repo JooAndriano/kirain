@@ -1,6 +1,6 @@
 /// Pengaturan jarak jauh (Remote Config). Read-only bagi app.
 abstract class RemoteSettings {
-  /// Prefix URL gambar level; URL = imageBaseUrl + Level.imageFile.
+  /// Prefix URL gambar puzzle; URL = imageBaseUrl + Puzzle.imageFile.
   String get imageBaseUrl;
 
   /// Ambil dan aktifkan nilai terbaru. Tidak boleh melempar: jika gagal,

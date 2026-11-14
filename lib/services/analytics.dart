@@ -2,16 +2,22 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Pencatat event game. Default [SilentAnalytics]; main.dart meng-override
-/// dengan [FirebaseGameAnalytics].
+/// dengan [FirebaseGameAnalytics]. [puzzleId] = id dokumen puzzle
+/// (mis. `stage_003_2`).
 abstract class GameAnalytics {
-  Future<void> levelStart(int levelId);
-  Future<void> levelComplete(
-    int levelId, {
+  Future<void> puzzleStart(String puzzleId);
+  Future<void> puzzleComplete(
+    String puzzleId, {
+    required int score,
+    required bool firstSolve,
+  });
+  Future<void> stageComplete(
+    int stage, {
     required int score,
     required int stars,
     required bool firstClear,
   });
-  Future<void> hintUsed(int levelId, String hint, {required int cost});
+  Future<void> hintUsed(String puzzleId, String hint, {required int cost});
   Future<void> dailyBonusClaimed({required int amount, required int streak});
 }
 
@@ -22,16 +28,26 @@ final analyticsProvider = Provider<GameAnalytics>(
 class SilentAnalytics implements GameAnalytics {
   const SilentAnalytics();
   @override
-  Future<void> levelStart(int levelId) async {}
+  Future<void> puzzleStart(String puzzleId) async {}
   @override
-  Future<void> levelComplete(
-    int levelId, {
+  Future<void> puzzleComplete(
+    String puzzleId, {
+    required int score,
+    required bool firstSolve,
+  }) async {}
+  @override
+  Future<void> stageComplete(
+    int stage, {
     required int score,
     required int stars,
     required bool firstClear,
   }) async {}
   @override
-  Future<void> hintUsed(int levelId, String hint, {required int cost}) async {}
+  Future<void> hintUsed(
+    String puzzleId,
+    String hint, {
+    required int cost,
+  }) async {}
   @override
   Future<void> dailyBonusClaimed({
     required int amount,
@@ -46,28 +62,43 @@ class FirebaseGameAnalytics implements GameAnalytics {
   final FirebaseAnalytics _fa;
 
   @override
-  Future<void> levelStart(int levelId) =>
-      _fa.logLevelStart(levelName: 'level_$levelId');
+  Future<void> puzzleStart(String puzzleId) =>
+      _fa.logLevelStart(levelName: puzzleId);
 
   @override
-  Future<void> levelComplete(
-    int levelId, {
+  Future<void> puzzleComplete(
+    String puzzleId, {
     required int score,
-    required int stars,
-    required bool firstClear,
+    required bool firstSolve,
   }) => _fa.logLevelEnd(
-    levelName: 'level_$levelId',
+    levelName: puzzleId,
     success: 1,
-    parameters: {'score': score, 'stars': stars, 'first_clear': '$firstClear'},
+    parameters: {'score': score, 'first_clear': '$firstSolve'},
   );
 
   @override
-  Future<void> hintUsed(int levelId, String hint, {required int cost}) =>
+  Future<void> stageComplete(
+    int stage, {
+    required int score,
+    required int stars,
+    required bool firstClear,
+  }) => _fa.logEvent(
+    name: 'stage_complete',
+    parameters: {
+      'stage': stage,
+      'score': score,
+      'stars': stars,
+      'first_clear': '$firstClear',
+    },
+  );
+
+  @override
+  Future<void> hintUsed(String puzzleId, String hint, {required int cost}) =>
       _fa.logSpendVirtualCurrency(
         itemName: hint,
         virtualCurrencyName: 'coin',
         value: cost,
-        parameters: {'level_name': 'level_$levelId'},
+        parameters: {'level_name': puzzleId},
       );
 
   @override

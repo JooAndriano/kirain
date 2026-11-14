@@ -2,12 +2,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../domain/level_sequence.dart';
-import '../state/levels_controller.dart';
+import '../domain/stage.dart';
+import '../state/stages_controller.dart';
 import '../state/progress_providers.dart';
 import 'firebase_check_page.dart';
 import 'game_page.dart';
-import 'level_select_page.dart';
+import 'stage_select_page.dart';
 import 'shop_page.dart';
 import 'splash_page.dart';
 import 'theme.dart';
@@ -37,7 +37,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   Widget build(BuildContext context) {
     final progress = ref.watch(progressProvider);
-    final levels = ref.watch(levelsControllerProvider).value?.levels;
+    final stages = ref.watch(stagesControllerProvider).value?.stages;
 
     return Scaffold(
       body: SafeArea(
@@ -45,10 +45,10 @@ class _HomePageState extends ConsumerState<HomePage> {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => Center(child: Text('Gagal memuat progress: $e')),
           data: (p) {
-            final next = levels == null
-                ? null
-                : continueLevel(levels, p.highestUnlockedLevel);
-            final label = p.starsPerLevel.isEmpty ? 'Main' : 'Lanjutkan';
+            final next = stages == null ? null : continueTarget(stages, p);
+            final label = p.stageStars.isEmpty && p.inProgress == null
+                ? 'Main'
+                : 'Lanjutkan';
 
             return Padding(
               padding: const EdgeInsets.all(24),
@@ -106,14 +106,20 @@ class _HomePageState extends ConsumerState<HomePage> {
                   else
                     FilledButton.icon(
                       icon: const Icon(Icons.play_arrow_rounded),
-                      label: Text('$label (Level ${next.order})'),
-                      onPressed: () => _push(GamePage(order: next.order)),
+                      label: Text(
+                        next.slot > 1
+                            ? '$label (Stage ${next.stage} · '
+                                  'Gambar ${next.slot}/${Stage.puzzleCount})'
+                            : '$label (Stage ${next.stage})',
+                      ),
+                      onPressed: () =>
+                          _push(GamePage(stage: next.stage, slot: next.slot)),
                     ),
                   const SizedBox(height: 12),
                   ElevatedButton.icon(
                     icon: const Icon(Icons.grid_view_rounded),
-                    label: const Text('Pilih Level'),
-                    onPressed: () => _push(const LevelSelectPage()),
+                    label: const Text('Pilih Stage'),
+                    onPressed: () => _push(const StageSelectPage()),
                   ),
                   const SizedBox(height: 12),
                   ElevatedButton.icon(

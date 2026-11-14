@@ -1,40 +1,47 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/level.dart';
+import '../data/puzzle.dart';
 import '../domain/economy.dart';
 import '../domain/game_engine.dart';
+import '../domain/progress_rules.dart';
+import '../domain/stage.dart';
 import '../services/analytics.dart';
-import '../state/levels_controller.dart';
+import '../services/stage_hooks.dart';
 import '../state/progress_providers.dart';
+import '../state/stages_controller.dart';
 
 enum HintResult { used, notEnoughCoins, unavailable }
 
+/// Kunci game: gambar ke-[slot] (1..3) pada stage [stage].
+typedef PuzzleRef = ({int stage, int slot});
+
 class GameState {
   const GameState({
-    required this.level,
+    required this.puzzle,
     required this.snapshot,
-    required this.nextOrder,
+    required this.nextStage,
     this.imageReady = false,
-    this.firstClear,
+    this.result,
   });
 
-  final Level level;
+  final Puzzle puzzle;
   final GameSnapshot snapshot;
 
-  /// Order level berikutnya, null jika ini level terakhir.
-  final int? nextOrder;
+  /// Nomor stage berikutnya, null jika ini stage terakhir.
+  final int? nextStage;
 
   /// false sampai gambar soal berhasil dimuat. Zoom Out dan hint
   /// dinonaktifkan selama false supaya poin/koin tidak berkurang sia-sia.
   final bool imageReady;
 
-  /// null selama level belum selesai disimpan; true jika baru pertama kali
-  /// selesai (koin diberikan), false jika level diulang.
-  final bool? firstClear;
+  /// null selama gambar belum benar dan tersimpan.
+  final PuzzleSolvedResult? result;
 
-  int get order => level.order;
-  bool get isLastLevel => nextOrder == null;
-  bool get saved => firstClear != null;
+  int get stage => puzzle.stage;
+  int get slot => puzzle.slot;
+  bool get isLastSlot => slot >= Stage.puzzleCount;
+  bool get isLastStage => nextStage == null;
+  bool get saved => result != null;
 
   bool get canZoomOut => imageReady && snapshot.canZoomOut;
   bool get canReveal => imageReady && snapshot.canReveal;
@@ -43,45 +50,45 @@ class GameState {
   GameState copyWith({
     GameSnapshot? snapshot,
     bool? imageReady,
-    bool? firstClear,
+    PuzzleSolvedResult? result,
   }) => GameState(
-    level: level,
+    puzzle: puzzle,
     snapshot: snapshot ?? this.snapshot,
-    nextOrder: nextOrder,
+    nextStage: nextStage,
     imageReady: imageReady ?? this.imageReady,
-    firstClear: firstClear ?? this.firstClear,
+    result: result ?? this.result,
   );
 }
 
-/// Argumen family = Level.order. Level harus sudah ada di
-/// [levelsControllerProvider] (GamePage memastikannya).
+/// Puzzle harus sudah ada di [stagesControllerProvider] (GamePage
+/// memastikannya).
 final gameControllerProvider = NotifierProvider.autoDispose
-    .family<GameController, GameState, int>(GameController.new);
+    .family<GameController, GameState, PuzzleRef>(GameController.new);
 
 /// Menghubungkan GameEngine dan progress ke UI. Aturan game tetap di domain/.
 class GameController extends Notifier<GameState> {
-  GameController(this.order);
+  GameController(this.key);
 
-  final int order;
+  final PuzzleRef key;
   late GameEngine _engine;
   bool _completing = false;
   bool _hintBusy = false;
 
   @override
   GameState build() {
-    // read, bukan watch: muat ulang daftar level tidak mereset game berjalan.
-    final levels = ref.read(levelsControllerProvider).value;
-    final level = levels?.byOrder(order);
-    if (levels == null || level == null) {
-      throw StateError('Level dengan order $order tidak tersedia');
+    // read, bukan watch: muat ulang daftar stage tidak mereset game berjalan.
+    final stages = ref.read(stagesControllerProvider).value;
+    final puzzle = stages?.puzzleAt(key.stage, key.slot);
+    if (stages == null || puzzle == null) {
+      throw StateError('Stage ${key.stage} gambar ${key.slot} tidak tersedia');
     }
-    _engine = GameEngine(level.answer);
+    _engine = GameEngine(puzzle.answer);
     _completing = false;
-    ref.read(analyticsProvider).levelStart(level.id);
+    ref.read(analyticsProvider).puzzleStart(puzzle.id);
     return GameState(
-      level: level,
+      puzzle: puzzle,
       snapshot: _engine.snapshot,
-      nextOrder: levels.nextOrderAfter(order),
+      nextStage: stages.nextAfter(key.stage),
     );
   }
 
@@ -97,30 +104,45 @@ class GameController extends Notifier<GameState> {
     if (_engine.status == GameStatus.correct) _complete();
   }
 
-  /// Simpan hasil level sekali saja saat jawaban benar.
+  /// Simpan hasil gambar sekali saja saat jawaban benar. Jika stage tuntas,
+  /// panggil [StageCompletionHook] sebelum UI menampilkan dialog stage.
   Future<void> _complete() async {
     if (_completing) return;
     _completing = true;
     final s = state.snapshot;
-    final firstClear = await ref
+    final puzzle = state.puzzle;
+    final result = await ref
         .read(progressProvider.notifier)
-        .completeLevel(
-          state.order,
-          s.score,
-          s.stars,
+        .solvePuzzle(
+          stage: puzzle.stage,
+          slot: puzzle.slot,
+          puzzleId: puzzle.id,
+          score: s.score,
           coins: s.coins,
-          nextOrder: state.nextOrder,
+          nextStage: state.nextStage,
         );
     if (!ref.mounted) return;
-    ref
-        .read(analyticsProvider)
-        .levelComplete(
-          state.level.id,
-          score: s.score,
-          stars: s.stars,
-          firstClear: firstClear,
-        );
-    state = state.copyWith(firstClear: firstClear);
+    final analytics = ref.read(
+      analyticsProvider,
+    )..puzzleComplete(puzzle.id, score: s.score, firstSolve: result.firstSolve);
+    final clear = result.stageClear;
+    if (clear != null) {
+      analytics.stageComplete(
+        clear.stage,
+        score: clear.totalScore,
+        stars: clear.stars,
+        firstClear: clear.firstClear,
+      );
+      try {
+        await ref
+            .read(stageCompletionHookProvider)
+            .onStageCompleted(clear.stage);
+      } catch (_) {
+        // Hook (nanti iklan) tidak boleh menghentikan alur game.
+      }
+      if (!ref.mounted) return;
+    }
+    state = state.copyWith(result: result);
   }
 
   void tapTile(int id) {
@@ -167,7 +189,7 @@ class GameController extends Notifier<GameState> {
       if (!paid) return HintResult.notEnoughCoins;
       if (!ref.mounted) return HintResult.unavailable;
       apply();
-      ref.read(analyticsProvider).hintUsed(state.level.id, name, cost: cost);
+      ref.read(analyticsProvider).hintUsed(state.puzzle.id, name, cost: cost);
       _emit();
       return HintResult.used;
     } finally {

@@ -55,27 +55,30 @@ class ProgressNotifier extends AsyncNotifier<Progress> {
     return true;
   }
 
-  /// Simpan bintang/skor terbaik, buka level berikutnya, dan beri koin jika
-  /// level baru pertama kali selesai. Mengembalikan true jika pertama kali.
-  /// [order] = Level.order; [nextOrder] null jika level terakhir.
-  Future<bool> completeLevel(
-    int order,
-    int score,
-    int stars, {
+  /// Simpan satu gambar benar: koin gambar jika pertama kali, catat skor di
+  /// inProgress (stage lain di inProgress diganti), dan tuntaskan stage bila
+  /// ketiga gambar sudah benar.
+  /// [nextStage] null jika [stage] stage terakhir.
+  Future<PuzzleSolvedResult> solvePuzzle({
+    required int stage,
+    required int slot,
+    required String puzzleId,
+    required int score,
     required int coins,
-    required int? nextOrder,
+    required int? nextStage,
   }) async {
     final p = await future;
-    final result = applyLevelComplete(
+    final result = applyPuzzleSolved(
       p,
-      order: order,
-      nextOrder: nextOrder,
+      stage: stage,
+      slot: slot,
+      puzzleId: puzzleId,
       score: score,
-      stars: stars,
       coins: coins,
+      nextStage: nextStage,
     );
     await _update(result.progress);
-    return result.firstClear;
+    return result;
   }
 
   /// Klaim bonus harian. Mengembalikan jumlah koin, atau 0 jika sudah diklaim.

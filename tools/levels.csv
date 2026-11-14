@@ -1,4 +1,0 @@
-order,packId,imageFile,answer,focusX,focusY,difficulty,active
-1,hewan,kucing.webp,KUCING,0,0,1,true
-2,buah,pisang.webp,PISANG,-0.2,-0.1,1,true
-3,benda,sepeda.webp,SEPEDA,0.2,0,2,true

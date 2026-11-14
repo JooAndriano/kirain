@@ -1,14 +1,16 @@
 {
   "name": "kirain-tools",
   "private": true,
-  "description": "Skrip admin Kirain (seed level ke Firestore).",
+  "description": "Skrip admin Kirain (CSV puzzle, validasi gambar, seed ke Firestore).",
   "license": "UNLICENSED",
   "engines": {
     "node": ">=18"
   },
   "scripts": {
-    "seed": "node seed_levels.js",
-    "seed:dry": "node seed_levels.js --dry-run",
+    "make-csv": "node make_puzzles_csv.js",
+    "check": "node check_images.js",
+    "seed": "node seed_puzzles.js",
+    "seed:dry": "node seed_puzzles.js --dry-run",
     "test": "node --test"
   },
   "dependencies": {

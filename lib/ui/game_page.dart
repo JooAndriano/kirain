@@ -4,39 +4,43 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/image_url_resolver.dart';
 import '../domain/economy.dart';
 import '../domain/game_engine.dart';
-import '../state/levels_controller.dart';
+import '../domain/progress_rules.dart';
+import '../domain/stage.dart';
 import '../state/settings_providers.dart';
-import 'all_levels_done_page.dart';
+import '../state/stages_controller.dart';
+import 'all_stages_done_page.dart';
 import 'game_controller.dart';
 import 'level_image.dart';
 import 'shop_page.dart';
+import 'stage_select_page.dart';
 import 'theme.dart';
 import 'widgets/answer_boxes.dart';
 import 'widgets/coin_badge.dart';
 import 'widgets/letter_board.dart';
+import 'widgets/stars_row.dart';
 import 'widgets/zoom_image.dart';
 
-/// Halaman main untuk level dengan [order] (Level.order).
+/// Halaman main untuk gambar ke-[slot] (1..3) pada stage [stage].
 class GamePage extends ConsumerWidget {
-  const GamePage({super.key, required this.order});
+  const GamePage({super.key, required this.stage, this.slot = 1});
 
-  final int order;
+  final int stage;
+  final int slot;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final levels = ref.watch(levelsControllerProvider);
-    return switch (levels) {
-      AsyncValue(:final value?) when value.byOrder(order) != null => _GameView(
-        order: order,
-      ),
-      AsyncValue(hasValue: true) || AsyncError() => const _LevelNotFound(),
+    final stages = ref.watch(stagesControllerProvider);
+    return switch (stages) {
+      AsyncValue(:final value?) when value.puzzleAt(stage, slot) != null =>
+        _GameView(puzzleRef: (stage: stage, slot: slot)),
+      AsyncValue(hasValue: true) || AsyncError() => const _StageNotFound(),
       _ => const Scaffold(body: Center(child: CircularProgressIndicator())),
     };
   }
 }
 
-class _LevelNotFound extends StatelessWidget {
-  const _LevelNotFound();
+class _StageNotFound extends StatelessWidget {
+  const _StageNotFound();
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +50,7 @@ class _LevelNotFound extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Level tidak ditemukan'),
+            const Text('Stage tidak ditemukan'),
             const SizedBox(height: 12),
             FilledButton(
               onPressed: () => Navigator.of(context).maybePop(),
@@ -60,9 +64,9 @@ class _LevelNotFound extends StatelessWidget {
 }
 
 class _GameView extends ConsumerStatefulWidget {
-  const _GameView({required this.order});
+  const _GameView({required this.puzzleRef});
 
-  final int order;
+  final PuzzleRef puzzleRef;
 
   @override
   ConsumerState<_GameView> createState() => _GameViewState();
@@ -71,27 +75,31 @@ class _GameView extends ConsumerStatefulWidget {
 class _GameViewState extends ConsumerState<_GameView> {
   bool _prefetched = false;
 
-  int get levelOrder => widget.order;
+  PuzzleRef get puzzleRef => widget.puzzleRef;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_prefetched) return;
     _prefetched = true;
-    // Unduh gambar level berikutnya selagi pemain menebak level ini.
-    final levels = ref.read(levelsControllerProvider).value;
-    final next = levels?.byOrder(levels.nextOrderAfter(levelOrder) ?? -1);
+    // Unduh gambar berikutnya (slot berikut, atau slot 1 stage berikutnya)
+    // selagi pemain menebak gambar ini.
+    final stages = ref.read(stagesControllerProvider).value;
+    if (stages == null) return;
+    final next = puzzleRef.slot < Stage.puzzleCount
+        ? stages.puzzleAt(puzzleRef.stage, puzzleRef.slot + 1)
+        : stages.puzzleAt(stages.nextAfter(puzzleRef.stage) ?? -1, 1);
     if (next != null) {
       precacheLevelImage(
         context,
-        levelImageSource(next, ref.read(imageBaseUrlProvider)),
+        puzzleImageSource(next, ref.read(imageBaseUrlProvider)),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final provider = gameControllerProvider(levelOrder);
+    final provider = gameControllerProvider(puzzleRef);
     final state = ref.watch(provider);
     final controller = ref.read(provider.notifier);
 
@@ -103,9 +111,9 @@ class _GameViewState extends ConsumerState<_GameView> {
         ref.read(gameFeedbackProvider).correct();
       }
     });
-    // Dialog muncul setelah hasil level tersimpan.
+    // Dialog muncul setelah hasil gambar tersimpan.
     ref.listen(provider.select((s) => s.saved), (prev, next) {
-      if (prev != true && next) _showCorrectDialog(context, ref);
+      if (prev != true && next) _showResult(context, ref);
     });
 
     final s = state.snapshot;
@@ -124,18 +132,22 @@ class _GameViewState extends ConsumerState<_GameView> {
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Column(
             children: [
-              _TopBar(level: state.order),
+              _TopBar(
+                stage: state.stage,
+                slot: state.slot,
+                currentSolved: state.saved,
+              ),
               const SizedBox(height: 8),
               Expanded(
                 child: Center(
                   child: ZoomImage(
-                    source: levelImageSource(
-                      state.level,
+                    source: puzzleImageSource(
+                      state.puzzle,
                       ref.watch(imageBaseUrlProvider),
                     ),
                     scale: s.scale,
-                    focusX: state.level.focusX,
-                    focusY: state.level.focusY,
+                    focusX: state.puzzle.focusX,
+                    focusY: state.puzzle.focusY,
                     onStatusChanged: (status) => controller.setImageReady(
                       status == LevelImageStatus.loaded,
                     ),
@@ -146,7 +158,7 @@ class _GameViewState extends ConsumerState<_GameView> {
               _PointInfo(snapshot: s),
               const SizedBox(height: 12),
               AnswerBoxes(
-                key: ValueKey('answer-${state.order}'),
+                key: ValueKey('answer-${state.puzzle.id}'),
                 slots: s.slots,
                 onTap: controller.tapSlot,
                 shakeTrigger: s.wrongCount,
@@ -217,20 +229,113 @@ class _GameViewState extends ConsumerState<_GameView> {
     );
   }
 
-  void _goNext(BuildContext context, int? nextOrder) {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(
-        builder: (_) => nextOrder == null
-            ? const AllLevelsDonePage()
-            : GamePage(order: nextOrder),
-      ),
+  void _replaceWith(BuildContext context, Widget page) {
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute<void>(builder: (_) => page));
+  }
+
+  void _showResult(BuildContext context, WidgetRef ref) {
+    final state = ref.read(gameControllerProvider(puzzleRef));
+    final result = state.result!;
+    final clear = result.stageClear;
+    if (clear == null) {
+      _showPuzzleDialog(context, state, result);
+    } else {
+      _showStageDialog(context, state, result, clear);
+    }
+  }
+
+  /// Hasil satu gambar (bukan gambar terakhir stage).
+  void _showPuzzleDialog(
+    BuildContext context,
+    GameState state,
+    PuzzleSolvedResult result,
+  ) {
+    _showBlockingDialog(
+      context,
+      title: 'Benar!',
+      children: (text) => [
+        Text(
+          'Gambar ${state.slot}/${Stage.puzzleCount}',
+          style: text.bodyLarge,
+        ),
+        const SizedBox(height: 8),
+        Text('${state.snapshot.score} poin', style: text.titleLarge),
+        Text(_coinLine(result), style: text.titleMedium),
+      ],
+      actions: (dialogContext) => [
+        FilledButton(
+          onPressed: () {
+            Navigator.of(dialogContext).pop();
+            _replaceWith(
+              context,
+              GamePage(stage: state.stage, slot: state.slot + 1),
+            );
+          },
+          child: const Text('Lanjut'),
+        ),
+      ],
     );
   }
 
-  void _showCorrectDialog(BuildContext context, WidgetRef ref) {
-    final state = ref.read(gameControllerProvider(levelOrder));
-    final s = state.snapshot;
-    final firstClear = state.firstClear ?? false;
+  /// Gambar terakhir benar: stage tuntas.
+  void _showStageDialog(
+    BuildContext context,
+    GameState state,
+    PuzzleSolvedResult result,
+    StageClearResult clear,
+  ) {
+    final nextStage = state.nextStage;
+    _showBlockingDialog(
+      context,
+      title: 'Stage ${clear.stage} selesai!',
+      children: (text) => [
+        StarsRow(stars: clear.stars, size: 48),
+        const SizedBox(height: 8),
+        Text('Total ${clear.totalScore} poin', style: text.titleLarge),
+        Text(_coinLine(result), style: text.titleMedium),
+        Text(
+          clear.firstClear
+              ? '+${clear.bonusCoins} koin bonus stage'
+              : 'Stage diulang, tanpa bonus',
+          style: text.titleMedium,
+        ),
+      ],
+      actions: (dialogContext) => [
+        TextButton(
+          onPressed: () {
+            Navigator.of(dialogContext).pop();
+            _replaceWith(context, const StageSelectPage());
+          },
+          child: const Text('Pilih Stage'),
+        ),
+        FilledButton(
+          onPressed: () {
+            Navigator.of(dialogContext).pop();
+            _replaceWith(
+              context,
+              nextStage == null
+                  ? const AllStagesDonePage()
+                  : GamePage(stage: nextStage),
+            );
+          },
+          child: Text(nextStage == null ? 'Selesai' : 'Stage berikutnya'),
+        ),
+      ],
+    );
+  }
+
+  String _coinLine(PuzzleSolvedResult result) => result.firstSolve
+      ? '+${result.puzzleCoins} koin'
+      : 'Gambar sudah pernah benar, tanpa koin';
+
+  void _showBlockingDialog(
+    BuildContext context, {
+    required String title,
+    required List<Widget> Function(TextTheme text) children,
+    required List<Widget> Function(BuildContext dialogContext) actions,
+  }) {
     showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -240,44 +345,16 @@ class _GameViewState extends ConsumerState<_GameView> {
           canPop: false,
           child: AlertDialog(
             title: Text(
-              'Benar!',
+              title,
               textAlign: TextAlign.center,
               style: text.headlineSmall,
             ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    for (var i = 0; i < 3; i++)
-                      Icon(
-                        Icons.star_rounded,
-                        size: 48,
-                        color: i < s.stars
-                            ? KirainColors.accent
-                            : KirainColors.starOff,
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text('${s.score} poin', style: text.titleLarge),
-                Text(
-                  firstClear ? '+${s.coins} koin' : 'Level diulang, tanpa koin',
-                  style: text.titleMedium,
-                ),
-              ],
+              children: children(text),
             ),
             actionsAlignment: MainAxisAlignment.center,
-            actions: [
-              FilledButton(
-                onPressed: () {
-                  Navigator.of(dialogContext).pop();
-                  _goNext(context, state.nextOrder);
-                },
-                child: const Text('Lanjut'),
-              ),
-            ],
+            actions: actions(dialogContext),
           ),
         );
       },
@@ -286,9 +363,15 @@ class _GameViewState extends ConsumerState<_GameView> {
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.level});
+  const _TopBar({
+    required this.stage,
+    required this.slot,
+    required this.currentSolved,
+  });
 
-  final int level;
+  final int stage;
+  final int slot;
+  final bool currentSolved;
 
   @override
   Widget build(BuildContext context) {
@@ -301,14 +384,74 @@ class _TopBar extends StatelessWidget {
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         Expanded(
-          child: Text(
-            'Level $level',
-            textAlign: TextAlign.center,
-            style: text.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Stage $stage · Gambar $slot/${Stage.puzzleCount}',
+                textAlign: TextAlign.center,
+                style: text.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 4),
+              StageProgressDots(current: slot, currentSolved: currentSolved),
+            ],
           ),
         ),
         const CoinBadge(),
       ],
+    );
+  }
+}
+
+/// Tiga titik progres stage: selesai (penuh), aktif (cincin), belum (pudar).
+class StageProgressDots extends StatelessWidget {
+  const StageProgressDots({
+    super.key,
+    required this.current,
+    this.currentSolved = false,
+  });
+
+  /// Slot yang sedang dimainkan (1..3).
+  final int current;
+  final bool currentSolved;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var slot = 1; slot <= Stage.puzzleCount; slot++)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: StageDot(
+              key: ValueKey('stage-dot-$slot'),
+              done: slot < current || (slot == current && currentSolved),
+              active: slot == current,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class StageDot extends StatelessWidget {
+  const StageDot({super.key, required this.done, required this.active});
+
+  final bool done;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 10,
+      height: 10,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: done ? KirainColors.primary : KirainColors.starOff,
+        border: active && !done
+            ? Border.all(color: KirainColors.primary, width: 2)
+            : null,
+      ),
     );
   }
 }

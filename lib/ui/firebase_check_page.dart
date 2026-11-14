@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../state/firebase_providers.dart';
@@ -39,7 +38,7 @@ class _ReportView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final r = report;
-    final first = r.firstLevel;
+    final first = r.firstPuzzle;
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
       children: [
@@ -51,28 +50,19 @@ class _ReportView extends StatelessWidget {
         ),
         _Row(label: 'imageBaseUrl', value: r.imageBaseUrl),
         _Row(
-          label: 'Level Firestore',
-          value: r.levels == null ? 'GAGAL' : '${r.levels!.length} level',
-          ok: r.levels != null && r.levels!.isNotEmpty,
-          detail: r.levelError,
+          label: 'Puzzle Firestore',
+          value: r.puzzles == null
+              ? 'GAGAL'
+              : '${r.puzzles!.length} puzzle · ${r.stageCount} stage lengkap',
+          ok: r.stageCount > 0,
+          detail: r.puzzleError,
         ),
-        if (r.indexUrl != null)
-          OutlinedButton.icon(
-            icon: const Icon(Icons.copy_rounded),
-            label: const Text('Salin tautan index'),
-            onPressed: () async {
-              await Clipboard.setData(ClipboardData(text: r.indexUrl!));
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Tautan disalin. Buka di browser.'),
-                ),
-              );
-            },
-          ),
         if (first != null) ...[
           const Divider(height: 32),
-          Text('Level pertama', style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            'Puzzle pertama',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           for (final e in first.toMap().entries)
             _Row(label: e.key, value: '${e.value}'),
           _Row(label: 'URL gambar', value: r.firstImageUrl ?? '-'),

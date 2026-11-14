@@ -11,7 +11,7 @@ import 'package:kirain/ui/splash_page.dart';
 class _MemRepo implements ProgressRepository {
   Progress saved = Progress(
     coins: 50,
-    highestUnlockedLevel: 1,
+    highestUnlockedStage: 1,
     lastDailyBonusDate: '2026-11-13',
     dailyStreak: 1,
   );
@@ -43,6 +43,6 @@ void main() {
 
     expect(find.byType(SplashPage), findsNothing);
     expect(find.byType(HomePage), findsOneWidget);
-    expect(find.text('Pilih Level'), findsOneWidget);
+    expect(find.text('Pilih Stage'), findsOneWidget);
   });
 }

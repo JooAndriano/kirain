@@ -126,3 +126,5 @@ app.*.symbols
 # Skrip admin (tools/): kunci service account JANGAN di-commit
 tools/serviceAccountKey.json
 tools/node_modules/
+# Gambar sumber puzzle (diunggah ke R2, tidak disimpan di git)
+tools/images/

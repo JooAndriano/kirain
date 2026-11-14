@@ -55,27 +55,50 @@ void main() {
     expect(repo.saved.coins, 75);
   });
 
-  group('completeLevel', () {
-    test(
-      'tidak menimpa bintang/skor lebih tinggi dengan yang lebih rendah',
-      () async {
-        expect(
-          await notifier().completeLevel(1, 90, 3, coins: 9, nextOrder: 2),
-          isTrue,
+  group('solvePuzzle', () {
+    Future<void> playStage(List<int> scores) async {
+      for (var slot = 1; slot <= 3; slot++) {
+        await notifier().solvePuzzle(
+          stage: 1,
+          slot: slot,
+          puzzleId: 'stage_001_$slot',
+          score: scores[slot - 1],
+          coins: scores[slot - 1] ~/ 10,
+          nextStage: 2,
         );
-        expect(
-          await notifier().completeLevel(1, 20, 1, coins: 2, nextOrder: 2),
-          isFalse,
-        );
+      }
+    }
 
-        final p = await progress();
-        expect(p.starsPerLevel[1], 3);
-        expect(p.bestScorePerLevel[1], 90);
-        expect(p.highestUnlockedLevel, 2);
-        expect(p.coins, 59); // koin hanya saat pertama kali
-        expect(repo.saved, p);
+    test(
+      'tiap gambar langsung disimpan (aman keluar di tengah stage)',
+      () async {
+        final r = await notifier().solvePuzzle(
+          stage: 1,
+          slot: 1,
+          puzzleId: 'stage_001_1',
+          score: 90,
+          coins: 9,
+          nextStage: 2,
+        );
+        expect(r.firstSolve, isTrue);
+        expect(repo.saved.inProgress, StageRun(stage: 1, solved: {1: 90}));
+        expect(repo.saved.coins, 59);
       },
     );
+
+    test('ulang stage: koin hanya sekali, bintang/skor tidak turun', () async {
+      await playStage([100, 90, 80]); // 270 -> 3 bintang
+      final first = await progress();
+      expect(first.coins, 50 + 10 + 9 + 8 + 15);
+      expect(first.highestUnlockedStage, 2);
+
+      await playStage([20, 20, 20]); // 60 -> 1 bintang
+      final p = await progress();
+      expect(p.coins, first.coins);
+      expect(p.stageStars[1], 3);
+      expect(p.stageBestScore[1], 270);
+      expect(repo.saved, p);
+    });
   });
 
   group('claimDailyBonus', () {
@@ -101,13 +124,13 @@ void main() {
       overrides: [
         progressRepositoryProvider.overrideWithValue(
           InMemoryProgressRepository(
-            Progress(coins: 7, highestUnlockedLevel: 3),
+            Progress(coins: 7, highestUnlockedStage: 3),
           ),
         ),
       ],
     );
     final p = await c.read(progressProvider.future);
     expect(p.coins, 7);
-    expect(p.highestUnlockedLevel, 3);
+    expect(p.highestUnlockedStage, 3);
   });
 }

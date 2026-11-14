@@ -6,6 +6,9 @@ import 'progress.dart';
 import 'progress_repository.dart';
 
 /// Menyimpan progress sebagai JSON pada satu key shared_preferences.
+///
+/// Data versi lama (tanpa/selain [Progress.schemaVersion]) atau rusak
+/// diabaikan: load mengembalikan default dan save berikutnya menimpanya.
 class LocalProgressRepository implements ProgressRepository {
   LocalProgressRepository(this._prefs);
 

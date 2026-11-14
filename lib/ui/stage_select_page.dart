@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../state/levels_controller.dart';
+import '../domain/stage.dart';
 import '../state/progress_providers.dart';
+import '../state/stages_controller.dart';
 import 'game_page.dart';
 import 'theme.dart';
 import 'widgets/coin_badge.dart';
+import 'widgets/stars_row.dart';
 
-class LevelSelectPage extends ConsumerWidget {
-  const LevelSelectPage({super.key});
+class StageSelectPage extends ConsumerWidget {
+  const StageSelectPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final levels = ref.watch(levelsControllerProvider);
+    final stages = ref.watch(stagesControllerProvider);
     final progress = ref.watch(progressProvider);
 
     Widget grid(List<Widget> children) => GridView.count(
@@ -24,26 +26,33 @@ class LevelSelectPage extends ConsumerWidget {
     );
 
     final Widget body;
-    if (levels.hasError && !levels.hasValue || progress.hasError) {
+    if (stages.hasError && !stages.hasValue || progress.hasError) {
       body = _LoadError(
         onReload: () {
           ref.invalidate(progressProvider);
-          ref.read(levelsControllerProvider.notifier).refresh();
+          ref.read(stagesControllerProvider.notifier).refresh();
         },
       );
-    } else if (!levels.hasValue || !progress.hasValue) {
+    } else if (!stages.hasValue || !progress.hasValue) {
       body = grid([for (var i = 0; i < 9; i++) const _SkeletonTile()]);
     } else {
       final p = progress.requireValue;
+      final run = p.inProgress;
       body = grid([
-        for (final level in levels.requireValue.levels)
-          LevelTile(
-            number: level.order,
-            locked: level.order > p.highestUnlockedLevel,
-            stars: p.starsPerLevel[level.order],
+        for (final stage in stages.requireValue.stages)
+          StageTile(
+            number: stage.number,
+            locked: stage.number > p.highestUnlockedStage,
+            stars: p.stageStars[stage.number],
+            solvedInRun: run != null && run.stage == stage.number
+                ? run.solved.length
+                : 0,
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
-                builder: (_) => GamePage(order: level.order),
+                builder: (_) => GamePage(
+                  stage: stage.number,
+                  slot: resumeSlot(p, stage.number),
+                ),
               ),
             ),
           ),
@@ -52,7 +61,7 @@ class LevelSelectPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Pilih Level'),
+        title: const Text('Pilih Stage'),
         backgroundColor: KirainColors.background,
         actions: const [
           Padding(padding: EdgeInsets.only(right: 12), child: CoinBadge()),
@@ -63,14 +72,14 @@ class LevelSelectPage extends ConsumerWidget {
   }
 }
 
-/// Kerangka tile selama daftar level dimuat.
+/// Kerangka tile selama daftar stage dimuat.
 class _SkeletonTile extends StatelessWidget {
   const _SkeletonTile();
 
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      key: const ValueKey('level-skeleton'),
+      key: const ValueKey('stage-skeleton'),
       decoration: BoxDecoration(
         color: KirainColors.skeleton,
         borderRadius: kBorderRadius,
@@ -100,7 +109,7 @@ class _LoadError extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Daftar level belum bisa dimuat',
+              'Daftar stage belum bisa dimuat',
               textAlign: TextAlign.center,
               style: text.titleMedium,
             ),
@@ -117,25 +126,30 @@ class _LoadError extends StatelessWidget {
   }
 }
 
-class LevelTile extends StatelessWidget {
-  const LevelTile({
+class StageTile extends StatelessWidget {
+  const StageTile({
     super.key,
     required this.number,
     required this.locked,
     required this.stars,
     required this.onTap,
+    this.solvedInRun = 0,
   });
 
   final int number;
   final bool locked;
 
-  /// null jika level belum pernah selesai.
+  /// Bintang terbaik, null jika stage belum pernah tuntas.
   final int? stars;
+
+  /// Jumlah gambar yang sudah benar pada stage yang sedang dimainkan.
+  final int solvedInRun;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    final small = text.bodySmall?.copyWith(color: KirainColors.lockedText);
     return Material(
       color: locked ? KirainColors.lockedTile : KirainColors.surface,
       borderRadius: kBorderRadius,
@@ -163,25 +177,14 @@ class LevelTile extends StatelessWidget {
                 ),
               ),
             const SizedBox(height: 4),
-            if (stars != null)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  for (var s = 0; s < 3; s++)
-                    Icon(
-                      Icons.star_rounded,
-                      size: 18,
-                      color: s < stars!
-                          ? KirainColors.accent
-                          : KirainColors.starOff,
-                    ),
-                ],
-              )
+            if (locked)
+              Text('Stage $number', style: small)
+            else if (solvedInRun > 0)
+              Text('Lanjut $solvedInRun/${Stage.puzzleCount}', style: small)
+            else if (stars != null)
+              StarsRow(stars: stars!)
             else
-              Text(
-                locked ? 'Level $number' : '',
-                style: text.bodySmall?.copyWith(color: KirainColors.lockedText),
-              ),
+              Text('', style: small),
           ],
         ),
       ),

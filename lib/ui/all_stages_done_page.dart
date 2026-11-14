@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-import 'level_select_page.dart';
+import 'stage_select_page.dart';
 import 'theme.dart';
 
-/// Ditampilkan setelah level terakhir selesai (tidak ada level berikutnya).
-class AllLevelsDonePage extends StatelessWidget {
-  const AllLevelsDonePage({super.key});
+/// Ditampilkan setelah stage terakhir tuntas (tidak ada stage berikutnya).
+class AllStagesDonePage extends StatelessWidget {
+  const AllStagesDonePage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +26,7 @@ class AllLevelsDonePage extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                'Semua level selesai!',
+                'Semua stage selesai!',
                 textAlign: TextAlign.center,
                 style: text.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w700,
@@ -34,17 +34,17 @@ class AllLevelsDonePage extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Hebat! Level baru akan segera hadir.',
+                'Hebat! Stage baru akan segera hadir.',
                 textAlign: TextAlign.center,
                 style: text.bodyLarge,
               ),
               const Spacer(),
               FilledButton.icon(
                 icon: const Icon(Icons.grid_view_rounded),
-                label: const Text('Pilih Level'),
+                label: const Text('Pilih Stage'),
                 onPressed: () => navigator.pushAndRemoveUntil(
                   MaterialPageRoute<void>(
-                    builder: (_) => const LevelSelectPage(),
+                    builder: (_) => const StageSelectPage(),
                   ),
                   (route) => route.isFirst,
                 ),

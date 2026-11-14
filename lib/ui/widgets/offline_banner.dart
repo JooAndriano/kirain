@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../state/connectivity_providers.dart';
-import '../../state/levels_controller.dart';
+import '../../state/stages_controller.dart';
 import '../theme.dart';
 
-/// Banner kecil "Mode offline". Tidak tampil apa pun saat online dan level
-/// berasal dari Firestore.
+/// Banner kecil "Mode offline". Tidak tampil apa pun saat online dan stage
+/// berasal dari Firestore atau cache.
 class OfflineBanner extends ConsumerWidget {
   const OfflineBanner({super.key});
 
@@ -14,8 +14,8 @@ class OfflineBanner extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (!ref.watch(showOfflineBannerProvider)) return const SizedBox.shrink();
     final usingFallback =
-        ref.watch(levelsControllerProvider).value?.usingFallback ?? false;
-    final loading = ref.watch(levelsControllerProvider).isLoading;
+        ref.watch(stagesControllerProvider).value?.usingFallback ?? false;
+    final loading = ref.watch(stagesControllerProvider).isLoading;
     final text = Theme.of(context).textTheme;
 
     return Material(
@@ -33,7 +33,7 @@ class OfflineBanner extends ConsumerWidget {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                usingFallback ? 'Mode offline · level contoh' : 'Mode offline',
+                usingFallback ? 'Mode offline · stage contoh' : 'Mode offline',
                 style: text.bodyMedium?.copyWith(
                   color: KirainColors.onOfflineBanner,
                   fontWeight: FontWeight.w600,
@@ -48,7 +48,7 @@ class OfflineBanner extends ConsumerWidget {
                 onPressed: loading
                     ? null
                     : () =>
-                          ref.read(levelsControllerProvider.notifier).refresh(),
+                          ref.read(stagesControllerProvider.notifier).refresh(),
                 child: const Text('Coba lagi'),
               )
             else

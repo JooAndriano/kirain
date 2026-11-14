@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kirain/data/dummy_levels.dart';
+import 'package:kirain/data/dummy_puzzles.dart';
 import 'package:kirain/data/image_url_resolver.dart';
-import 'package:kirain/data/level.dart';
+import 'package:kirain/data/puzzle.dart';
 
 void main() {
   String r(String base, String file) => ImageUrlResolver.resolve(base, file);
@@ -63,25 +63,26 @@ void main() {
     expect(localLevelAsset('level1.png'), 'assets/images/level1.png');
   });
 
-  group('levelImageSource', () {
-    test('level dummy -> aset lokal', () {
+  group('puzzleImageSource', () {
+    test('puzzle dummy -> aset lokal', () {
       expect(
-        levelImageSource(dummyLevels.first, 'https://cdn.test/img/'),
+        puzzleImageSource(dummyPuzzles.first, 'https://cdn.test/img/'),
         const LocalLevelImage('assets/images/level1.png'),
       );
     });
 
-    test('level Firestore -> imageBaseUrl + imageFile', () {
-      const level = Level(
-        id: 1,
-        order: 1,
+    test('puzzle Firestore -> imageBaseUrl + imageFile', () {
+      const puzzle = Puzzle(
+        id: 'stage_001_1',
+        stage: 1,
+        slot: 1,
         imageFile: 'kucing.webp',
         answer: 'KUCING',
         focusX: 0.5,
         focusY: 0.5,
       );
       expect(
-        levelImageSource(level, 'https://cdn.test/img/'),
+        puzzleImageSource(puzzle, 'https://cdn.test/img/'),
         const RemoteLevelImage('https://cdn.test/img/kucing.webp'),
       );
     });

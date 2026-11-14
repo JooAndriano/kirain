@@ -70,7 +70,7 @@ class GameSnapshot {
   bool get canZoomOut => nextBasePoint != null && status == GameStatus.playing;
 }
 
-/// Aturan papan huruf dan kotak jawaban untuk satu level.
+/// Aturan papan huruf dan kotak jawaban untuk satu gambar.
 class GameEngine {
   GameEngine(String answer, {Random? random, this.tileCount = defaultTileCount})
     : answer = answer.toUpperCase() {

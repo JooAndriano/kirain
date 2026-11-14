@@ -1,4 +1,4 @@
-/// Menghitung poin satu level berdasarkan tingkat zoom, jawaban salah,
+/// Menghitung poin satu gambar berdasarkan tingkat zoom, jawaban salah,
 /// dan pemakaian hint. Zoom-out dilakukan manual oleh pemain.
 class ScoreEngine {
   static const List<double> scales = [8, 5, 3, 2, 1];
