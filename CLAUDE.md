@@ -9,3 +9,7 @@
 - Firebase hanya diakses lewat repository (LevelRepository, RemoteSettings). Widget tidak memanggil Firebase langsung.
 - App hanya MEMBACA Firestore, tidak pernah menulis.
 - Level menyimpan nama file gambar (imageFile), bukan URL. URL = imageBaseUrl (Remote Config) + imageFile.
+- Progress level dikunci dengan Level.order (bukan indeks list). order unik, naik, tidak dipakai ulang.
+- Dummy levels hanya fallback saat Firestore gagal dan tidak ada cache. Gambar dummy = asset lokal.
+- Gambar online selalu lewat LevelImage widget (cached_network_image). Jangan memanggil Image.network langsung.
+- Folder tools/ berisi skrip admin. serviceAccountKey.json JANGAN pernah di-commit; pastikan ada di .gitignore.

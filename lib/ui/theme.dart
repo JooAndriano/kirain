@@ -26,6 +26,13 @@ abstract final class KirainColors {
 
   /// Bayangan krem, senada dengan bayangan wordmark Kirain.
   static const taglineShadow = Color(0xFFE8D2AC);
+
+  /// Banner "Mode offline".
+  static const offlineBanner = Color(0xFF5B4A3F);
+  static const onOfflineBanner = Color(0xFFFFFFFF);
+
+  /// Tile kerangka saat daftar level dimuat.
+  static const skeleton = Color(0xFFEDE3D0);
 }
 
 /// Gaya tagline "Tebak gambarnya!": bulat, tebal, senada dengan wordmark.

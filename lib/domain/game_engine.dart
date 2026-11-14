@@ -72,7 +72,7 @@ class GameSnapshot {
 
 /// Aturan papan huruf dan kotak jawaban untuk satu level.
 class GameEngine {
-  GameEngine(String answer, {Random? random, this.tileCount = 14})
+  GameEngine(String answer, {Random? random, this.tileCount = defaultTileCount})
     : answer = answer.toUpperCase() {
     if (this.answer.isEmpty || this.answer.length > tileCount) {
       throw ArgumentError.value(
@@ -102,6 +102,9 @@ class GameEngine {
   }
 
   static const _alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+  /// Jumlah huruf di papan = panjang jawaban maksimum.
+  static const int defaultTileCount = 14;
   static const int hideCount = 3;
 
   final String answer;

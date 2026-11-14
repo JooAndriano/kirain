@@ -29,11 +29,6 @@ final remoteSettingsProvider = Provider<RemoteSettings>(
   (ref) => const DefaultRemoteSettings(),
 );
 
-/// Level dari Firestore. Belum dipakai game (game masih dummy).
-final remoteLevelsProvider = FutureProvider.autoDispose<List<Level>>(
-  (ref) => ref.watch(levelRepositoryProvider).fetchLevels(),
-);
-
 /// Ringkasan untuk halaman debug FirebaseCheckPage.
 class FirebaseCheckReport {
   const FirebaseCheckReport({

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../state/levels_controller.dart';
 import '../state/progress_providers.dart';
 import 'game_page.dart';
 import 'theme.dart';
@@ -11,8 +12,43 @@ class LevelSelectPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final levels = ref.watch(levelsProvider);
+    final levels = ref.watch(levelsControllerProvider);
     final progress = ref.watch(progressProvider);
+
+    Widget grid(List<Widget> children) => GridView.count(
+      padding: const EdgeInsets.all(16),
+      crossAxisCount: 3,
+      mainAxisSpacing: 12,
+      crossAxisSpacing: 12,
+      children: children,
+    );
+
+    final Widget body;
+    if (levels.hasError && !levels.hasValue || progress.hasError) {
+      body = _LoadError(
+        onReload: () {
+          ref.invalidate(progressProvider);
+          ref.read(levelsControllerProvider.notifier).refresh();
+        },
+      );
+    } else if (!levels.hasValue || !progress.hasValue) {
+      body = grid([for (var i = 0; i < 9; i++) const _SkeletonTile()]);
+    } else {
+      final p = progress.requireValue;
+      body = grid([
+        for (final level in levels.requireValue.levels)
+          LevelTile(
+            number: level.order,
+            locked: level.order > p.highestUnlockedLevel,
+            stars: p.starsPerLevel[level.order],
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => GamePage(order: level.order),
+              ),
+            ),
+          ),
+      ]);
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -22,26 +58,58 @@ class LevelSelectPage extends ConsumerWidget {
           Padding(padding: EdgeInsets.only(right: 12), child: CoinBadge()),
         ],
       ),
-      body: progress.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Gagal memuat progress: $e')),
-        data: (p) => GridView.count(
-          padding: const EdgeInsets.all(16),
-          crossAxisCount: 3,
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
+      body: body,
+    );
+  }
+}
+
+/// Kerangka tile selama daftar level dimuat.
+class _SkeletonTile extends StatelessWidget {
+  const _SkeletonTile();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      key: const ValueKey('level-skeleton'),
+      decoration: BoxDecoration(
+        color: KirainColors.skeleton,
+        borderRadius: kBorderRadius,
+      ),
+    );
+  }
+}
+
+class _LoadError extends StatelessWidget {
+  const _LoadError({required this.onReload});
+
+  final VoidCallback onReload;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            for (var i = 0; i < levels.length; i++)
-              LevelTile(
-                number: i + 1,
-                locked: levels[i].id > p.highestUnlockedLevel,
-                stars: p.starsPerLevel[levels[i].id],
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => GamePage(levelIndex: i),
-                  ),
-                ),
-              ),
+            const Icon(
+              Icons.cloud_off_rounded,
+              size: 48,
+              color: KirainColors.lockedText,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Daftar level belum bisa dimuat',
+              textAlign: TextAlign.center,
+              style: text.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Muat ulang'),
+              onPressed: onReload,
+            ),
           ],
         ),
       ),

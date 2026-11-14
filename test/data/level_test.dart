@@ -9,8 +9,8 @@ void main() {
         'id': 7,
         'imageFile': 'kucing.webp',
         'answer': 'KUCING',
-        'focusX': 0.3,
-        'focusY': 0.7,
+        'focusX': -0.5,
+        'focusY': 0.5,
         'packId': 'hewan',
         'order': 12,
         'difficulty': 2,
@@ -20,12 +20,20 @@ void main() {
       expect(level.id, 7);
       expect(level.imageFile, 'kucing.webp');
       expect(level.answer, 'KUCING');
-      expect(level.focusX, 0.3);
-      expect(level.focusY, 0.7);
+      // Firestore -1..1 -> model 0..1.
+      expect(level.focusX, 0.25);
+      expect(level.focusY, 0.75);
       expect(level.packId, 'hewan');
       expect(level.order, 12);
       expect(level.difficulty, 2);
       expect(level.active, isTrue);
+      expect(level.isLocal, isFalse);
+    });
+
+    test('fokus 0 di Firestore = tengah gambar', () {
+      final level = Level.fromFirestore({'focusX': 0, 'focusY': 0});
+      expect(level.focusX, 0.5);
+      expect(level.focusY, 0.5);
     });
 
     test('field hilang -> nilai default aman', () {
@@ -74,7 +82,7 @@ void main() {
       final level = Level.fromFirestore({
         'id': 3.0,
         'focusX': 1,
-        'focusY': 0,
+        'focusY': -1,
         'order': 5.0,
       });
 
@@ -84,8 +92,8 @@ void main() {
       expect(level.order, 5);
     });
 
-    test('fokus di luar 0..1 dijepit', () {
-      final level = Level.fromFirestore({'focusX': -0.2, 'focusY': 1.8});
+    test('fokus di luar -1..1 dijepit', () {
+      final level = Level.fromFirestore({'focusX': -1.2, 'focusY': 1.8});
       expect(level.focusX, 0.0);
       expect(level.focusY, 1.0);
     });
@@ -108,14 +116,26 @@ void main() {
   test('toMap -> fromFirestore bolak-balik sama', () {
     for (final l in dummyLevels) {
       final back = Level.fromFirestore(l.toMap());
-      expect(back.toMap(), l.toMap());
+      expect(back.focusX, closeTo(l.focusX, 1e-9));
+      expect(back.focusY, closeTo(l.focusY, 1e-9));
+      expect(back.answer, l.answer);
+      expect(back.order, l.order);
+      expect(back.imageFile, l.imageFile);
     }
   });
 
-  test('dummy levels memakai nama file, bukan path', () {
+  test('toMap menulis fokus dalam -1..1', () {
+    final m = dummyLevels.first.toMap();
+    expect(m['focusX'], 0.0);
+    expect(m.containsKey('isLocal'), isFalse);
+  });
+
+  test('dummy levels lokal, memakai nama file, order unik', () {
     for (final l in dummyLevels) {
       expect(l.imageFile, isNot(contains('/')));
       expect(l.active, isTrue);
+      expect(l.isLocal, isTrue);
     }
+    expect(dummyLevels.map((l) => l.order).toSet(), hasLength(5));
   });
 }

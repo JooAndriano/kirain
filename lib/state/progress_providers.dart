@@ -1,14 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/dummy_levels.dart';
-import '../data/level.dart';
 import '../data/progress.dart';
 import '../data/progress_repository.dart';
 import '../domain/daily_bonus.dart';
 import '../domain/progress_rules.dart';
 import '../services/analytics.dart';
-
-final levelsProvider = Provider<List<Level>>((ref) => dummyLevels);
 
 /// Di-override di main.dart dengan LocalProgressRepository.
 final progressRepositoryProvider = Provider<ProgressRepository>(
@@ -61,20 +57,22 @@ class ProgressNotifier extends AsyncNotifier<Progress> {
 
   /// Simpan bintang/skor terbaik, buka level berikutnya, dan beri koin jika
   /// level baru pertama kali selesai. Mengembalikan true jika pertama kali.
+  /// [order] = Level.order; [nextOrder] null jika level terakhir.
   Future<bool> completeLevel(
-    int levelId,
+    int order,
     int score,
     int stars, {
     required int coins,
+    required int? nextOrder,
   }) async {
     final p = await future;
     final result = applyLevelComplete(
       p,
-      levelId: levelId,
+      order: order,
+      nextOrder: nextOrder,
       score: score,
       stars: stars,
       coins: coins,
-      levelCount: ref.read(levelsProvider).length,
     );
     await _update(result.progress);
     return result.firstClear;

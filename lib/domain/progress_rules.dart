@@ -13,28 +13,28 @@ class LevelCompleteResult {
 
 /// Simpan bintang/skor terbaik saja, buka level berikutnya, dan beri koin
 /// hanya saat level pertama kali selesai.
+///
+/// Progress dikunci dengan [order] (Level.order). [nextOrder] = order level
+/// berikutnya di daftar, null jika [order] level terakhir.
 LevelCompleteResult applyLevelComplete(
   Progress p, {
-  required int levelId,
+  required int order,
+  required int? nextOrder,
   required int score,
   required int stars,
   required int coins,
-  required int levelCount,
 }) {
-  final firstClear = !p.starsPerLevel.containsKey(levelId);
-  final oldStars = p.starsPerLevel[levelId] ?? 0;
-  final oldScore = p.bestScorePerLevel[levelId] ?? 0;
-  final unlocked = max(p.highestUnlockedLevel, min(levelId + 1, levelCount));
+  final firstClear = !p.starsPerLevel.containsKey(order);
+  final oldStars = p.starsPerLevel[order] ?? 0;
+  final oldScore = p.bestScorePerLevel[order] ?? 0;
+  final unlocked = max(p.highestUnlockedLevel, nextOrder ?? order);
 
   return LevelCompleteResult(
     p.copyWith(
       coins: firstClear ? p.coins + coins : p.coins,
       highestUnlockedLevel: unlocked,
-      starsPerLevel: {...p.starsPerLevel, levelId: max(oldStars, stars)},
-      bestScorePerLevel: {
-        ...p.bestScorePerLevel,
-        levelId: max(oldScore, score),
-      },
+      starsPerLevel: {...p.starsPerLevel, order: max(oldStars, stars)},
+      bestScorePerLevel: {...p.bestScorePerLevel, order: max(oldScore, score)},
     ),
     firstClear: firstClear,
   );

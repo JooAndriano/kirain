@@ -1,0 +1,17 @@
+{
+  "name": "kirain-tools",
+  "private": true,
+  "description": "Skrip admin Kirain (seed level ke Firestore).",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "seed": "node seed_levels.js",
+    "seed:dry": "node seed_levels.js --dry-run",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  }
+}

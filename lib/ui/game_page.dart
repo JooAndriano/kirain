@@ -4,9 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/image_url_resolver.dart';
 import '../domain/economy.dart';
 import '../domain/game_engine.dart';
+import '../state/levels_controller.dart';
 import '../state/settings_providers.dart';
+import 'all_levels_done_page.dart';
 import 'game_controller.dart';
-import 'level_select_page.dart';
+import 'level_image.dart';
 import 'shop_page.dart';
 import 'theme.dart';
 import 'widgets/answer_boxes.dart';
@@ -14,14 +16,82 @@ import 'widgets/coin_badge.dart';
 import 'widgets/letter_board.dart';
 import 'widgets/zoom_image.dart';
 
+/// Halaman main untuk level dengan [order] (Level.order).
 class GamePage extends ConsumerWidget {
-  const GamePage({super.key, required this.levelIndex});
+  const GamePage({super.key, required this.order});
 
-  final int levelIndex;
+  final int order;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final provider = gameControllerProvider(levelIndex);
+    final levels = ref.watch(levelsControllerProvider);
+    return switch (levels) {
+      AsyncValue(:final value?) when value.byOrder(order) != null => _GameView(
+        order: order,
+      ),
+      AsyncValue(hasValue: true) || AsyncError() => const _LevelNotFound(),
+      _ => const Scaffold(body: Center(child: CircularProgressIndicator())),
+    };
+  }
+}
+
+class _LevelNotFound extends StatelessWidget {
+  const _LevelNotFound();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(backgroundColor: KirainColors.background),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Level tidak ditemukan'),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: () => Navigator.of(context).maybePop(),
+              child: const Text('Kembali'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GameView extends ConsumerStatefulWidget {
+  const _GameView({required this.order});
+
+  final int order;
+
+  @override
+  ConsumerState<_GameView> createState() => _GameViewState();
+}
+
+class _GameViewState extends ConsumerState<_GameView> {
+  bool _prefetched = false;
+
+  int get levelOrder => widget.order;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_prefetched) return;
+    _prefetched = true;
+    // Unduh gambar level berikutnya selagi pemain menebak level ini.
+    final levels = ref.read(levelsControllerProvider).value;
+    final next = levels?.byOrder(levels.nextOrderAfter(levelOrder) ?? -1);
+    if (next != null) {
+      precacheLevelImage(
+        context,
+        levelImageSource(next, ref.read(imageBaseUrlProvider)),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = gameControllerProvider(levelOrder);
     final state = ref.watch(provider);
     final controller = ref.read(provider.notifier);
 
@@ -54,15 +124,21 @@ class GamePage extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Column(
             children: [
-              _TopBar(level: state.levelIndex + 1),
+              _TopBar(level: state.order),
               const SizedBox(height: 8),
               Expanded(
                 child: Center(
                   child: ZoomImage(
-                    imagePath: localLevelAsset(state.level.imageFile),
+                    source: levelImageSource(
+                      state.level,
+                      ref.watch(imageBaseUrlProvider),
+                    ),
                     scale: s.scale,
                     focusX: state.level.focusX,
                     focusY: state.level.focusY,
+                    onStatusChanged: (status) => controller.setImageReady(
+                      status == LevelImageStatus.loaded,
+                    ),
                   ),
                 ),
               ),
@@ -70,7 +146,7 @@ class GamePage extends ConsumerWidget {
               _PointInfo(snapshot: s),
               const SizedBox(height: 12),
               AnswerBoxes(
-                key: ValueKey('answer-${state.levelIndex}'),
+                key: ValueKey('answer-${state.order}'),
                 slots: s.slots,
                 onTap: controller.tapSlot,
                 shakeTrigger: s.wrongCount,
@@ -84,14 +160,14 @@ class GamePage extends ConsumerWidget {
                     icon: Icons.zoom_out_map,
                     label: 'Zoom Out',
                     cost: null,
-                    onPressed: s.canZoomOut ? controller.zoomOut : null,
+                    onPressed: state.canZoomOut ? controller.zoomOut : null,
                   ),
                   const SizedBox(width: 8),
                   _ActionButton(
                     icon: Icons.lightbulb_outline,
                     label: 'Buka Huruf',
                     cost: Economy.revealLetterCost,
-                    onPressed: s.canReveal
+                    onPressed: state.canReveal
                         ? () => useHint(controller.revealLetter)
                         : null,
                   ),
@@ -100,7 +176,7 @@ class GamePage extends ConsumerWidget {
                     icon: Icons.backspace_outlined,
                     label: 'Hapus Huruf Salah',
                     cost: Economy.removeWrongCost,
-                    onPressed: s.canRemoveWrong
+                    onPressed: state.canRemoveWrong
                         ? () => useHint(controller.removeWrongLetters)
                         : null,
                   ),
@@ -141,24 +217,18 @@ class GamePage extends ConsumerWidget {
     );
   }
 
-  void _goNext(BuildContext context, bool isLastLevel) {
-    final navigator = Navigator.of(context);
-    if (isLastLevel) {
-      navigator.pushAndRemoveUntil(
-        MaterialPageRoute<void>(builder: (_) => const LevelSelectPage()),
-        (route) => route.isFirst,
-      );
-    } else {
-      navigator.pushReplacement(
-        MaterialPageRoute<void>(
-          builder: (_) => GamePage(levelIndex: levelIndex + 1),
-        ),
-      );
-    }
+  void _goNext(BuildContext context, int? nextOrder) {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (_) => nextOrder == null
+            ? const AllLevelsDonePage()
+            : GamePage(order: nextOrder),
+      ),
+    );
   }
 
   void _showCorrectDialog(BuildContext context, WidgetRef ref) {
-    final state = ref.read(gameControllerProvider(levelIndex));
+    final state = ref.read(gameControllerProvider(levelOrder));
     final s = state.snapshot;
     final firstClear = state.firstClear ?? false;
     showDialog<void>(
@@ -203,9 +273,9 @@ class GamePage extends ConsumerWidget {
               FilledButton(
                 onPressed: () {
                   Navigator.of(dialogContext).pop();
-                  _goNext(context, state.isLastLevel);
+                  _goNext(context, state.nextOrder);
                 },
-                child: Text(state.isLastLevel ? 'Pilih Level' : 'Lanjut'),
+                child: const Text('Lanjut'),
               ),
             ],
           ),

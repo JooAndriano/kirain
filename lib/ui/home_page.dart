@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../domain/level_sequence.dart';
+import '../state/levels_controller.dart';
 import '../state/progress_providers.dart';
 import 'firebase_check_page.dart';
 import 'game_page.dart';
@@ -11,6 +13,7 @@ import 'splash_page.dart';
 import 'theme.dart';
 import 'widgets/coin_badge.dart';
 import 'widgets/daily_bonus_dialog.dart';
+import 'widgets/offline_banner.dart';
 import 'widgets/settings_dialog.dart';
 
 class HomePage extends ConsumerStatefulWidget {
@@ -34,7 +37,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   Widget build(BuildContext context) {
     final progress = ref.watch(progressProvider);
-    final levels = ref.watch(levelsProvider);
+    final levels = ref.watch(levelsControllerProvider).value?.levels;
 
     return Scaffold(
       body: SafeArea(
@@ -42,10 +45,9 @@ class _HomePageState extends ConsumerState<HomePage> {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => Center(child: Text('Gagal memuat progress: $e')),
           data: (p) {
-            final idx = levels.indexWhere(
-              (l) => l.id == p.highestUnlockedLevel,
-            );
-            final continueIndex = idx < 0 ? levels.length - 1 : idx;
+            final next = levels == null
+                ? null
+                : continueLevel(levels, p.highestUnlockedLevel);
             final label = p.starsPerLevel.isEmpty ? 'Main' : 'Lanjutkan';
 
             return Padding(
@@ -53,6 +55,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  const OfflineBanner(),
                   Row(
                     children: [
                       IconButton(
@@ -71,14 +74,20 @@ class _HomePageState extends ConsumerState<HomePage> {
                     ],
                   ),
                   const Spacer(),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(32),
-                    child: Image.asset(kLogoAsset, height: 140),
+                  // Flexible: logo mengecil di layar pendek (mis. saat
+                  // banner offline tampil), tidak overflow.
+                  Flexible(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(32),
+                      child: Image.asset(kLogoAsset, height: 140),
+                    ),
                   ),
                   const SizedBox(height: 16),
-                  Hero(
-                    tag: kWordmarkHeroTag,
-                    child: Image.asset(kWordmarkAsset, height: 96),
+                  Flexible(
+                    child: Hero(
+                      tag: kWordmarkHeroTag,
+                      child: Image.asset(kWordmarkAsset, height: 96),
+                    ),
                   ),
                   Text(
                     'Tebak gambarnya!',
@@ -86,11 +95,20 @@ class _HomePageState extends ConsumerState<HomePage> {
                     style: kirainTaglineStyle(),
                   ),
                   const Spacer(),
-                  FilledButton.icon(
-                    icon: const Icon(Icons.play_arrow_rounded),
-                    label: Text('$label (Level ${continueIndex + 1})'),
-                    onPressed: () => _push(GamePage(levelIndex: continueIndex)),
-                  ),
+                  if (next == null)
+                    const FilledButton(
+                      onPressed: null,
+                      child: SizedBox.square(
+                        dimension: 24,
+                        child: CircularProgressIndicator(strokeWidth: 3),
+                      ),
+                    )
+                  else
+                    FilledButton.icon(
+                      icon: const Icon(Icons.play_arrow_rounded),
+                      label: Text('$label (Level ${next.order})'),
+                      onPressed: () => _push(GamePage(order: next.order)),
+                    ),
                   const SizedBox(height: 12),
                   ElevatedButton.icon(
                     icon: const Icon(Icons.grid_view_rounded),

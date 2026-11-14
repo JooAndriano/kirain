@@ -1,3 +1,5 @@
+import 'level.dart';
+
 /// Menggabungkan base URL (Remote Config) dengan nama file gambar level.
 /// Dart murni, tanpa Flutter.
 class ImageUrlResolver {
@@ -27,7 +29,47 @@ class ImageUrlResolver {
 /// Folder aset lokal untuk level dummy.
 const String kLocalLevelImageDir = 'assets/images/';
 
-/// Resolver sementara: level dummy memakai gambar dari aset lokal.
-/// Diganti URL remote saat level diambil dari Firestore.
+/// Path aset lokal untuk gambar level dummy.
 String localLevelAsset(String imageFile) =>
     ImageUrlResolver.resolve(kLocalLevelImageDir, imageFile);
+
+/// Asal gambar soal: aset lokal (dummy) atau URL remote (Firestore + R2).
+sealed class LevelImageSource {
+  const LevelImageSource();
+}
+
+class LocalLevelImage extends LevelImageSource {
+  const LocalLevelImage(this.assetPath);
+  final String assetPath;
+
+  @override
+  bool operator ==(Object other) =>
+      other is LocalLevelImage && other.assetPath == assetPath;
+
+  @override
+  int get hashCode => assetPath.hashCode;
+
+  @override
+  String toString() => 'LocalLevelImage($assetPath)';
+}
+
+class RemoteLevelImage extends LevelImageSource {
+  const RemoteLevelImage(this.url);
+  final String url;
+
+  @override
+  bool operator ==(Object other) =>
+      other is RemoteLevelImage && other.url == url;
+
+  @override
+  int get hashCode => url.hashCode;
+
+  @override
+  String toString() => 'RemoteLevelImage($url)';
+}
+
+/// Dummy -> aset lokal; level Firestore -> imageBaseUrl + imageFile.
+LevelImageSource levelImageSource(Level level, String imageBaseUrl) =>
+    level.isLocal
+    ? LocalLevelImage(localLevelAsset(level.imageFile))
+    : RemoteLevelImage(ImageUrlResolver.resolve(imageBaseUrl, level.imageFile));

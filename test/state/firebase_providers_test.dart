@@ -75,13 +75,6 @@ void main() {
     },
   );
 
-  test('remoteLevelsProvider membaca dari LevelRepository', () async {
-    final c = container();
-    final levels = await c.read(remoteLevelsProvider.future);
-    expect(levels.single.imageFile, 'kucing.webp');
-    expect(repo.calls, 1);
-  });
-
   group('firebaseCheckProvider', () {
     test('sukses: jumlah level, level pertama, dan URL gambar', () async {
       final c = container();

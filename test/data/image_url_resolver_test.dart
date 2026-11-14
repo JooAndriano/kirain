@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kirain/data/dummy_levels.dart';
 import 'package:kirain/data/image_url_resolver.dart';
+import 'package:kirain/data/level.dart';
 
 void main() {
   String r(String base, String file) => ImageUrlResolver.resolve(base, file);
@@ -59,5 +61,29 @@ void main() {
 
   test('localLevelAsset menunjuk ke folder aset', () {
     expect(localLevelAsset('level1.png'), 'assets/images/level1.png');
+  });
+
+  group('levelImageSource', () {
+    test('level dummy -> aset lokal', () {
+      expect(
+        levelImageSource(dummyLevels.first, 'https://cdn.test/img/'),
+        const LocalLevelImage('assets/images/level1.png'),
+      );
+    });
+
+    test('level Firestore -> imageBaseUrl + imageFile', () {
+      const level = Level(
+        id: 1,
+        order: 1,
+        imageFile: 'kucing.webp',
+        answer: 'KUCING',
+        focusX: 0.5,
+        focusY: 0.5,
+      );
+      expect(
+        levelImageSource(level, 'https://cdn.test/img/'),
+        const RemoteLevelImage('https://cdn.test/img/kucing.webp'),
+      );
+    });
   });
 }

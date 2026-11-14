@@ -59,8 +59,14 @@ void main() {
     test(
       'tidak menimpa bintang/skor lebih tinggi dengan yang lebih rendah',
       () async {
-        expect(await notifier().completeLevel(1, 90, 3, coins: 9), isTrue);
-        expect(await notifier().completeLevel(1, 20, 1, coins: 2), isFalse);
+        expect(
+          await notifier().completeLevel(1, 90, 3, coins: 9, nextOrder: 2),
+          isTrue,
+        );
+        expect(
+          await notifier().completeLevel(1, 20, 1, coins: 2, nextOrder: 2),
+          isFalse,
+        );
 
         final p = await progress();
         expect(p.starsPerLevel[1], 3);

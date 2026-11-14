@@ -4,6 +4,7 @@ import 'package:kirain/data/progress.dart';
 import 'package:kirain/data/progress_repository.dart';
 import 'package:kirain/domain/economy.dart';
 import 'package:kirain/services/analytics.dart';
+import 'package:kirain/state/levels_controller.dart';
 import 'package:kirain/state/progress_providers.dart';
 import 'package:kirain/ui/game_controller.dart';
 
@@ -55,11 +56,14 @@ void main() {
   });
 
   test('mulai level, pakai hint, dan selesai tercatat', () async {
-    final provider = gameControllerProvider(0);
+    // Repo level default gagal -> fallback dummy (order 1..5).
+    await c.read(levelsControllerProvider.future);
+    final provider = gameControllerProvider(1);
     c.listen(provider, (_, _) {});
     final id = c.read(provider).level.id;
     expect(spy.events, ['start:$id']);
 
+    c.read(provider.notifier).setImageReady(true);
     await c.read(provider.notifier).revealLetter();
     expect(
       spy.events.last,

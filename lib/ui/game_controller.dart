@@ -4,66 +4,92 @@ import '../data/level.dart';
 import '../domain/economy.dart';
 import '../domain/game_engine.dart';
 import '../services/analytics.dart';
+import '../state/levels_controller.dart';
 import '../state/progress_providers.dart';
 
 enum HintResult { used, notEnoughCoins, unavailable }
 
 class GameState {
   const GameState({
-    required this.levelIndex,
     required this.level,
     required this.snapshot,
-    required this.levelCount,
+    required this.nextOrder,
+    this.imageReady = false,
     this.firstClear,
   });
 
-  final int levelIndex;
   final Level level;
   final GameSnapshot snapshot;
-  final int levelCount;
+
+  /// Order level berikutnya, null jika ini level terakhir.
+  final int? nextOrder;
+
+  /// false sampai gambar soal berhasil dimuat. Zoom Out dan hint
+  /// dinonaktifkan selama false supaya poin/koin tidak berkurang sia-sia.
+  final bool imageReady;
 
   /// null selama level belum selesai disimpan; true jika baru pertama kali
   /// selesai (koin diberikan), false jika level diulang.
   final bool? firstClear;
 
-  bool get isLastLevel => levelIndex >= levelCount - 1;
+  int get order => level.order;
+  bool get isLastLevel => nextOrder == null;
   bool get saved => firstClear != null;
 
-  GameState copyWith({GameSnapshot? snapshot, bool? firstClear}) => GameState(
-    levelIndex: levelIndex,
+  bool get canZoomOut => imageReady && snapshot.canZoomOut;
+  bool get canReveal => imageReady && snapshot.canReveal;
+  bool get canRemoveWrong => imageReady && snapshot.canRemoveWrong;
+
+  GameState copyWith({
+    GameSnapshot? snapshot,
+    bool? imageReady,
+    bool? firstClear,
+  }) => GameState(
     level: level,
     snapshot: snapshot ?? this.snapshot,
-    levelCount: levelCount,
+    nextOrder: nextOrder,
+    imageReady: imageReady ?? this.imageReady,
     firstClear: firstClear ?? this.firstClear,
   );
 }
 
-/// Argumen family = indeks level di levelsProvider.
+/// Argumen family = Level.order. Level harus sudah ada di
+/// [levelsControllerProvider] (GamePage memastikannya).
 final gameControllerProvider = NotifierProvider.autoDispose
     .family<GameController, GameState, int>(GameController.new);
 
 /// Menghubungkan GameEngine dan progress ke UI. Aturan game tetap di domain/.
 class GameController extends Notifier<GameState> {
-  GameController(this.levelIndex);
+  GameController(this.order);
 
-  final int levelIndex;
+  final int order;
   late GameEngine _engine;
   bool _completing = false;
   bool _hintBusy = false;
 
   @override
   GameState build() {
-    final levels = ref.watch(levelsProvider);
-    final level = levels[levelIndex];
+    // read, bukan watch: muat ulang daftar level tidak mereset game berjalan.
+    final levels = ref.read(levelsControllerProvider).value;
+    final level = levels?.byOrder(order);
+    if (levels == null || level == null) {
+      throw StateError('Level dengan order $order tidak tersedia');
+    }
     _engine = GameEngine(level.answer);
     _completing = false;
     ref.read(analyticsProvider).levelStart(level.id);
     return GameState(
-      levelIndex: levelIndex,
       level: level,
       snapshot: _engine.snapshot,
-      levelCount: levels.length,
+      nextOrder: levels.nextOrderAfter(order),
     );
+  }
+
+  /// Dipanggil UI saat status gambar soal berubah.
+  void setImageReady(bool ready) {
+    if (state.imageReady != ready) {
+      state = state.copyWith(imageReady: ready);
+    }
   }
 
   void _emit() {
@@ -78,7 +104,13 @@ class GameController extends Notifier<GameState> {
     final s = state.snapshot;
     final firstClear = await ref
         .read(progressProvider.notifier)
-        .completeLevel(state.level.id, s.score, s.stars, coins: s.coins);
+        .completeLevel(
+          state.order,
+          s.score,
+          s.stars,
+          coins: s.coins,
+          nextOrder: state.nextOrder,
+        );
     if (!ref.mounted) return;
     ref
         .read(analyticsProvider)
@@ -102,20 +134,22 @@ class GameController extends Notifier<GameState> {
   }
 
   /// Gratis, hanya mengurangi poin.
+  /// Ditolak selama gambar belum termuat.
   void zoomOut() {
+    if (!state.canZoomOut) return;
     if (_engine.zoomOut()) _emit();
   }
 
   Future<HintResult> revealLetter() => _paidHint(
     name: 'reveal_letter',
-    available: state.snapshot.canReveal,
+    available: state.canReveal,
     cost: Economy.revealLetterCost,
     apply: _engine.revealLetter,
   );
 
   Future<HintResult> removeWrongLetters() => _paidHint(
     name: 'remove_wrong_letters',
-    available: state.snapshot.canRemoveWrong,
+    available: state.canRemoveWrong,
     cost: Economy.removeWrongCost,
     apply: _engine.removeWrongLetters,
   );

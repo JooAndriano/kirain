@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kirain/data/progress.dart';
 import 'package:kirain/data/progress_repository.dart';
+import 'package:kirain/state/connectivity_providers.dart';
 import 'package:kirain/state/progress_providers.dart';
 import 'package:kirain/ui/home_page.dart';
 import 'package:kirain/ui/splash_page.dart';
@@ -28,6 +29,8 @@ void main() {
           progressRepositoryProvider.overrideWithValue(_MemRepo()),
           // Bonus hari ini sudah diklaim, jadi tidak ada dialog di Home.
           clockProvider.overrideWithValue(() => DateTime(2026, 11, 13)),
+          // Plugin connectivity tidak tersedia di tes.
+          onlineProvider.overrideWithValue(const AsyncData(true)),
         ],
         child: const MaterialApp(home: SplashPage()),
       ),
