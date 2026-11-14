@@ -87,15 +87,23 @@ function packIdFor(rel) {
   return parts.length > 1 ? parts[0] : DEFAULT_PACK;
 }
 
+const byName = (a, b) =>
+  a.file.name < b.file.name ? -1 : a.file.name > b.file.name ? 1 : 0;
+
 /**
  * Bangun baris CSV dari daftar file .webp (hasil scanFiles).
  * Mengembalikan { rows, skipped, warnings }.
  *
- * - slot = urutan abjad nama file dalam stage yang sama (1..).
- * - startStage: geser nomor stage sehingga stage terkecil menjadi startStage
- *   (jarak antar-stage dipertahankan). null = pakai angka di nama file.
+ * - [words] (hasil loadWords, boleh null): jika pasangan (jawaban, stage)
+ *   dari nama file ada di words.txt, slot dan packId diambil dari sana.
+ *   Jika tidak cocok, dipakai perilaku lama dan diberi peringatan.
+ * - Perilaku lama: slot = urutan abjad nama file dalam stage yang sama
+ *   (mengisi slot yang belum dipakai words), packId = nama subfolder.
+ * - startStage: geser nomor stage file yang TIDAK cocok words sehingga
+ *   stage terkecilnya menjadi startStage (jarak antar-stage dipertahankan).
+ *   Stage dari words.txt tidak pernah digeser. null = angka di nama file.
  */
-function buildRows(files, { startStage = null, random = Math.random } = {}) {
+function buildRows(files, { startStage = null, random = Math.random, words = null } = {}) {
   const skipped = [];
   const warnings = [];
   const parsed = [];
@@ -107,12 +115,36 @@ function buildRows(files, { startStage = null, random = Math.random } = {}) {
       skipped.push(f.rel);
       continue;
     }
-    parsed.push({ ...info, file: f });
+    parsed.push({ ...info, file: f, word: null });
   }
 
-  if (parsed.length > 0 && startStage != null) {
-    const min = Math.min(...parsed.map((p) => p.stage));
-    for (const p of parsed) p.stage = p.stage - min + startStage;
+  // Cocokkan dengan words.txt (urut abjad: jika satu kata punya beberapa
+  // file, mis. kucing_1.webp dan kucing_1_b.webp, hanya yang pertama cocok).
+  if (words) {
+    const used = new Map();
+    for (const p of [...parsed].sort(byName)) {
+      const entry = words.byKey.get(`${p.answer.toLowerCase()}_${p.stage}`);
+      if (!entry) {
+        warnings.push(
+          `${p.file.rel}: (${p.answer.toLowerCase()}, stage ${p.stage}) tidak ada di words.txt; ` +
+            'slot/packId dari urutan abjad dan subfolder.',
+        );
+      } else if (used.has(entry.key)) {
+        warnings.push(
+          `${p.file.rel}: ${entry.key} sudah dipakai ${used.get(entry.key)}; ` +
+            'slot/packId dari urutan abjad dan subfolder.',
+        );
+      } else {
+        used.set(entry.key, p.file.rel);
+        p.word = entry;
+      }
+    }
+  }
+
+  const loose = parsed.filter((p) => !p.word);
+  if (loose.length > 0 && startStage != null) {
+    const min = Math.min(...loose.map((p) => p.stage));
+    for (const p of loose) p.stage = p.stage - min + startStage;
   }
 
   const byStage = new Map();
@@ -123,30 +155,52 @@ function buildRows(files, { startStage = null, random = Math.random } = {}) {
 
   const rows = [];
   for (const stage of [...byStage.keys()].sort((a, b) => a - b)) {
-    const list = byStage
-      .get(stage)
-      .sort((a, b) => (a.file.name < b.file.name ? -1 : a.file.name > b.file.name ? 1 : 0));
+    const list = byStage.get(stage).sort(byName);
     if (list.length !== PUZZLES_PER_STAGE) {
       warnings.push(
         `Stage ${stage} berisi ${list.length} gambar (harus ${PUZZLES_PER_STAGE}): ` +
           list.map((p) => p.file.rel).join(', '),
       );
     }
-    list.forEach((p, i) => {
-      rows.push({
+    // Slot dari words dulu; sisanya mengisi slot kosong terkecil (abjad).
+    const taken = new Set(list.filter((p) => p.word).map((p) => p.word.slot));
+    let next = 1;
+    const stageRows = list.map((p) => {
+      let slot;
+      if (p.word) slot = p.word.slot;
+      else {
+        while (taken.has(next)) next++;
+        slot = next;
+        taken.add(next);
+      }
+      return {
         stage,
-        slot: i + 1,
-        packId: packIdFor(p.file.rel),
+        slot,
+        packId: p.word ? p.word.packId : packIdFor(p.file.rel),
         imageFile: p.file.name,
         answer: p.answer,
         focusX: randomFocus(random),
         focusY: randomFocus(random),
         difficulty: difficultyFor(p.answer),
         active: true,
-      });
+      };
     });
+    rows.push(...stageRows.sort((a, b) => a.slot - b.slot));
   }
   return { rows, skipped, warnings };
+}
+
+/**
+ * Pasangan (jawaban, stage) di words.txt yang belum punya gambar .webp di
+ * [images] (hasil scanFiles). Mengembalikan daftar entry words.
+ */
+function wordsWithoutImages(words, images) {
+  const have = new Set();
+  for (const f of images) {
+    const info = parseFilename(f.name);
+    if (info) have.add(`${info.answer.toLowerCase()}_${info.stage}`);
+  }
+  return words.entries.filter((e) => !have.has(e.key));
 }
 
 function toCsv(rows) {
@@ -444,10 +498,23 @@ function validate(rows, images) {
 }
 
 /**
- * Baca CSV + pindai folder gambar, lalu validasi.
- * Mengembalikan { puzzles, errors, warnings }.
+ * Baca CSV + pindai folder gambar, lalu validasi. Jika [words] (hasil
+ * loadWords) diberikan, masalah words.txt menjadi peringatan dan pasangan
+ * (jawaban, stage) yang belum punya gambar dikembalikan di `missingWords`
+ * (keduanya tidak menggagalkan validasi).
+ * Mengembalikan { puzzles, errors, warnings, missingWords }.
  */
-function checkProject({ csvPath, imagesDir }) {
+function checkProject({ csvPath, imagesDir, words = null }) {
+  const result = checkCsvAndImages({ csvPath, imagesDir });
+  result.missingWords = [];
+  if (words && fs.existsSync(imagesDir) && fs.statSync(imagesDir).isDirectory()) {
+    result.warnings.push(...words.errors);
+    result.missingWords = wordsWithoutImages(words, scanFiles(imagesDir));
+  }
+  return result;
+}
+
+function checkCsvAndImages({ csvPath, imagesDir }) {
   if (!fs.existsSync(csvPath)) {
     return { puzzles: [], errors: [`CSV tidak ditemukan: ${csvPath}`], warnings: [] };
   }
@@ -527,6 +594,7 @@ module.exports = {
   scanFiles,
   packIdFor,
   buildRows,
+  wordsWithoutImages,
   toCsv,
   parseCsv,
   validate,

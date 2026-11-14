@@ -4,22 +4,27 @@
 // Membuat puzzles.csv dari folder gambar .webp.
 //
 //   node make_puzzles_csv.js <folder gambar> [--start-stage N] [--force] [--out file.csv]
+//                            [--words words.txt | --no-words]
 //
 // Pola nama file: jawaban_stage[_akhiran].webp, mis. kucing_1.webp,
-// gajah_1_b.webp. Subfolder pertama = packId ("umum" jika di root).
-// slot = urutan abjad nama file dalam stage yang sama.
+// gajah_1_b.webp.
+// Jika tools/words.txt ada (atau --words file), slot dan packId diambil dari
+// sana dengan mencocokkan jawaban + stage. Tanpa kecocokan (atau --no-words):
+// slot = urutan abjad nama file dalam stage yang sama, packId = subfolder.
 
 const fs = require('node:fs');
 const path = require('node:path');
 const { buildRows, parseArgs, printList, scanFiles, toCsv } = require('./lib/puzzles');
+const { WORDS_PATH, loadWords } = require('./lib/words');
 
 const USAGE =
-  'Pemakaian: node make_puzzles_csv.js <folder gambar> [--start-stage N] [--force] [--out file.csv]';
+  'Pemakaian: node make_puzzles_csv.js <folder gambar> [--start-stage N] [--force]\n' +
+  '                                   [--out file.csv] [--words words.txt | --no-words]';
 
 function main() {
   const args = parseArgs(process.argv.slice(2), {
-    flags: ['force', 'help'],
-    options: ['start-stage', 'out'],
+    flags: ['force', 'help', 'no-words'],
+    options: ['start-stage', 'out', 'words'],
   });
   if (args.help) {
     console.log(USAGE);
@@ -48,7 +53,21 @@ function main() {
     );
   }
 
-  const { rows, skipped, warnings } = buildRows(scanFiles(dir), { startStage });
+  let words = null;
+  if (!args['no-words']) {
+    const wordsPath = path.resolve(args.words ?? WORDS_PATH);
+    words = loadWords(wordsPath);
+    if (!words && args.words) throw new Error(`words.txt tidak ditemukan: ${wordsPath}`);
+    if (words) {
+      console.log(
+        `Words       : ${path.relative(process.cwd(), wordsPath) || wordsPath} ` +
+          `(${words.entries.length} kata)`,
+      );
+      printList('Masalah di words.txt (baris dilewati)', words.errors, console.warn);
+    }
+  }
+
+  const { rows, skipped, warnings } = buildRows(scanFiles(dir), { startStage, words });
 
   printList(
     'Nama file tidak cocok pola jawaban_stage[_akhiran].webp, dilewati',

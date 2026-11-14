@@ -1,0 +1,150 @@
+jeruk|orange fruit|1|1|pasar
+semangka|watermelon|1|2|pasar
+apel|red apple|1|3|pasar
+pisang|banana bunch|2|1|pasar
+nanas|pineapple|2|2|pasar
+anggur|grapes|2|3|pasar
+mangga|mango fruit|3|1|pasar
+pepaya|papaya|3|2|pasar
+melon|cantaloupe melon|3|3|pasar
+durian|durian fruit|4|1|pasar
+manggis|mangosteen|4|2|pasar
+rambutan|rambutan|4|3|pasar
+salak|snake fruit salak|5|1|pasar
+kelapa|coconut|5|2|pasar
+alpukat|avocado|5|3|pasar
+tomat|tomato|6|1|pasar
+wortel|carrot|6|2|pasar
+jagung|corn cob|6|3|pasar
+bawangputih|garlic|7|1|pasar
+cabai|chili pepper|7|2|pasar
+terong|eggplant|7|3|pasar
+kentang|potato|8|1|pasar
+brokoli|broccoli|8|2|pasar
+kol|cabbage|8|3|pasar
+timun|cucumber|9|1|pasar
+labu|pumpkin|9|2|pasar
+paprika|bell pepper|9|3|pasar
+telur|eggs|10|1|pasar
+roti|bread loaf|10|2|pasar
+madu|honey dipper|10|3|pasar
+panci|cooking pot|11|1|dapur
+wajan|frying pan wok|11|2|dapur
+sendok|wooden spoon|11|3|dapur
+garpu|fork|12|1|dapur
+pisau|kitchen knife|12|2|dapur
+piring|white plate|12|3|dapur
+gelas|drinking glass|13|1|dapur
+cangkir|coffee cup|13|2|dapur
+teko|teapot|13|3|dapur
+kompor|gas stove burner|14|1|dapur
+blender|blender|14|2|dapur
+spatula|spatula|14|3|dapur
+nasi|steamed rice bowl|15|1|dapur
+mie|noodles|15|2|dapur
+sate|satay skewers|15|3|dapur
+tempe|tempeh|16|1|dapur
+tahu|tofu|16|2|dapur
+bakso|meatball|16|3|dapur
+gula|sugar cubes|17|1|dapur
+garam|salt crystals|17|2|dapur
+merica|black peppercorns|17|3|dapur
+kopi|coffee beans|18|1|dapur
+teh|tea leaves|18|2|dapur
+cokelat|chocolate pieces|18|3|dapur
+keju|cheese block|19|1|dapur
+susu|glass of milk|19|2|dapur
+mentega|butter|19|3|dapur
+kerupuk|prawn crackers|20|1|dapur
+donat|donut|20|2|dapur
+pizza|pizza|20|3|dapur
+mawar|rose flower|21|1|alam
+melati|jasmine flower|21|2|alam
+anggrek|orchid|21|3|alam
+tulip|tulip flower|22|1|alam
+matahari|sunflower|22|2|alam
+teratai|lotus flower|22|3|alam
+kaktus|cactus|23|1|alam
+bambu|bamboo|23|2|alam
+pakis|fern leaf|23|3|alam
+daun|green leaf|24|1|alam
+rumput|grass blades|24|2|alam
+lumut|moss|24|3|alam
+jamur|mushroom|25|1|alam
+kacang|peanuts|25|2|alam
+akar|tree roots|25|3|alam
+cengkeh|cloves spice|26|1|alam
+kayumanis|cinnamon sticks|26|2|alam
+jahe|ginger root|26|3|alam
+kunyit|turmeric root|27|1|alam
+lengkuas|galangal root|27|2|alam
+serai|lemongrass|27|3|alam
+batu|stone pebbles|28|1|alam
+pasir|sand|28|2|alam
+tanah|soil|28|3|alam
+kupukupu|butterfly|29|1|alam
+lebah|honey bee|29|2|alam
+semut|ant|29|3|alam
+pelangi|rainbow|30|1|alam
+awan|clouds|30|2|alam
+bulan|moon|30|3|alam
+kucing|cat|31|1|satwa
+anjing|dog|31|2|satwa
+kelinci|rabbit|31|3|satwa
+sapi|cow|32|1|satwa
+kambing|goat|32|2|satwa
+ayam|chicken hen|32|3|satwa
+bebek|duck|33|1|satwa
+angsa|goose|33|2|satwa
+merpati|pigeon dove|33|3|satwa
+gajah|elephant|34|1|satwa
+harimau|tiger|34|2|satwa
+jerapah|giraffe|34|3|satwa
+zebra|zebra|35|1|satwa
+singa|lion|35|2|satwa
+kuda|horse|35|3|satwa
+monyet|monkey|36|1|satwa
+orangutan|orangutan|36|2|satwa
+panda|giant panda|36|3|satwa
+ular|snake|37|1|satwa
+katak|frog|37|2|satwa
+kurakura|turtle|37|3|satwa
+ikan|fish|38|1|satwa
+kepiting|crab|38|2|satwa
+udang|shrimp|38|3|satwa
+paus|whale|39|1|satwa
+lumbalumba|dolphin|39|2|satwa
+gurita|octopus|39|3|satwa
+elang|eagle|40|1|satwa
+merak|peacock|40|2|satwa
+flamingo|flamingo|40|3|satwa
+kursi|wooden chair|41|1|rumah
+meja|wooden table|41|2|rumah
+lemari|wardrobe cabinet|41|3|rumah
+kasur|mattress bed|42|1|rumah
+bantal|pillow|42|2|rumah
+selimut|blanket|42|3|rumah
+jam|wall clock|43|1|rumah
+kunci|key|43|2|rumah
+gembok|padlock|43|3|rumah
+payung|umbrella|44|1|rumah
+topi|hat|44|2|rumah
+sepatu|shoes|44|3|rumah
+tas|backpack|45|1|rumah
+kacamata|eyeglasses|45|2|rumah
+sandal|flip flops sandals|45|3|rumah
+buku|book stack|46|1|rumah
+pensil|pencils|46|2|rumah
+penggaris|ruler|46|3|rumah
+gunting|scissors|47|1|rumah
+palu|hammer|47|2|rumah
+obeng|screwdriver|47|3|rumah
+sepeda|bicycle|48|1|rumah
+perahu|wooden boat|48|2|rumah
+layanglayang|kite|48|3|rumah
+lilin|candle|49|1|rumah
+lampu|light bulb|49|2|rumah
+senter|flashlight|49|3|rumah
+piala|golden trophy|50|1|rumah
+kado|gift box|50|2|rumah
+balon|balloons|50|3|rumah

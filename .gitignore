@@ -128,3 +128,5 @@ tools/serviceAccountKey.json
 tools/node_modules/
 # Gambar sumber puzzle (diunggah ke R2, tidak disimpan di git)
 tools/images/
+tools/picked/
+tools/candidates/

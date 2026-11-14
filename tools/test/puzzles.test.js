@@ -129,7 +129,7 @@ test('make -> check: 2 stage contoh (6 gambar) lulus', () => {
   const images = makeImages(SAMPLE);
   const out = path.join(tmpDir(), 'puzzles.csv');
 
-  const make = run('make_puzzles_csv.js', [images, '--out', out]);
+  const make = run('make_puzzles_csv.js', [images, '--out', out, '--no-words']);
   assert.equal(make.status, 0, make.stderr);
   const csv = fs.readFileSync(out, 'utf8');
   assert.match(csv, /^stage,slot,packId,imageFile,answer,focusX,focusY,difficulty,active\n/);
@@ -150,12 +150,12 @@ test('make tidak menimpa CSV tanpa --force', () => {
   const out = path.join(tmpDir(), 'puzzles.csv');
   fs.writeFileSync(out, 'lama');
 
-  const blocked = run('make_puzzles_csv.js', [images, '--out', out]);
+  const blocked = run('make_puzzles_csv.js', [images, '--out', out, '--no-words']);
   assert.equal(blocked.status, 1);
   assert.match(blocked.stderr, /--force/);
   assert.equal(fs.readFileSync(out, 'utf8'), 'lama');
 
-  const forced = run('make_puzzles_csv.js', [images, '--out', out, '--force']);
+  const forced = run('make_puzzles_csv.js', [images, '--out', out, '--force', '--no-words']);
   assert.equal(forced.status, 0, forced.stderr);
   assert.notEqual(fs.readFileSync(out, 'utf8'), 'lama');
 });
