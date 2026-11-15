@@ -8,7 +8,7 @@ void main() {
   group('AdParams.defaults', () {
     test('nilai bawaan aman', () {
       expect(p.adsEnabled, isTrue);
-      expect(p.interstitialEveryNStages, 1);
+      expect(p.interstitialEveryNStages, 2);
       expect(p.interstitialStartAfterStage, 2);
       expect(p.interstitialMinIntervalSeconds, 120);
       expect(p.rewardedCoins, 25);
@@ -35,22 +35,44 @@ void main() {
     test('sebelum interstitialStartAfterStage -> tidak', () {
       expect(show(1), isFalse);
       expect(show(2), isTrue); // tepat di batas
-      expect(show(3), isTrue);
+      expect(show(4), isTrue);
+    });
+
+    test('bawaan: hanya setiap 2 stage (2, 4, 6, ...)', () {
+      expect(
+        [for (var s = 1; s <= 8; s++) show(s)],
+        [false, true, false, true, false, true, false, true],
+      );
     });
 
     test('startAfterStage 0 atau 1: mulai stage 1', () {
       expect(
-        show(1, params: const AdParams(interstitialStartAfterStage: 0)),
+        show(
+          1,
+          params: const AdParams(
+            interstitialEveryNStages: 1,
+            interstitialStartAfterStage: 0,
+          ),
+        ),
         isTrue,
       );
       expect(
-        show(1, params: const AdParams(interstitialStartAfterStage: 1)),
+        show(
+          1,
+          params: const AdParams(
+            interstitialEveryNStages: 1,
+            interstitialStartAfterStage: 1,
+          ),
+        ),
         isTrue,
       );
     });
 
     test('stage tidak valid (0 / negatif) -> tidak', () {
-      const fromZero = AdParams(interstitialStartAfterStage: 0);
+      const fromZero = AdParams(
+        interstitialEveryNStages: 1,
+        interstitialStartAfterStage: 0,
+      );
       expect(show(0, params: fromZero), isFalse);
       expect(show(-3, params: fromZero), isFalse);
     });
@@ -80,36 +102,36 @@ void main() {
 
     test('everyN 0 atau negatif dianggap 1 (tidak crash bagi 0)', () {
       expect(
-        show(5, params: const AdParams(interstitialEveryNStages: 0)),
+        show(6, params: const AdParams(interstitialEveryNStages: 0)),
         isTrue,
       );
       expect(
-        show(5, params: const AdParams(interstitialEveryNStages: -2)),
+        show(6, params: const AdParams(interstitialEveryNStages: -2)),
         isTrue,
       );
     });
 
     test('belum pernah ada iklan layar penuh -> boleh', () {
-      expect(show(5, last: null), isTrue);
+      expect(show(6, last: null), isTrue);
     });
 
     test('jarak minimum: kurang 1 detik tidak, tepat batas boleh', () {
       expect(
-        show(5, last: now.subtract(const Duration(seconds: 119))),
+        show(6, last: now.subtract(const Duration(seconds: 119))),
         isFalse,
       );
-      expect(show(5, last: now.subtract(const Duration(seconds: 120))), isTrue);
-      expect(show(5, last: now.subtract(const Duration(hours: 1))), isTrue);
+      expect(show(6, last: now.subtract(const Duration(seconds: 120))), isTrue);
+      expect(show(6, last: now.subtract(const Duration(hours: 1))), isTrue);
     });
 
     test('iklan baru saja tampil (jarak 0) -> tidak', () {
-      expect(show(5, last: now), isFalse);
+      expect(show(6, last: now), isFalse);
     });
 
     test('minInterval 0 atau negatif -> tidak ada batas jarak', () {
       expect(
         show(
-          5,
+          6,
           last: now,
           params: const AdParams(interstitialMinIntervalSeconds: 0),
         ),
@@ -117,7 +139,7 @@ void main() {
       );
       expect(
         show(
-          5,
+          6,
           last: now,
           params: const AdParams(interstitialMinIntervalSeconds: -10),
         ),
@@ -126,7 +148,7 @@ void main() {
     });
 
     test('jam mundur (iklan terakhir di masa depan) tidak mengunci iklan', () {
-      expect(show(5, last: now.add(const Duration(days: 1))), isTrue);
+      expect(show(6, last: now.add(const Duration(days: 1))), isTrue);
     });
   });
 

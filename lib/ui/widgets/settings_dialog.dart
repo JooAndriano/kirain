@@ -16,7 +16,8 @@ class SettingsDialog extends ConsumerWidget {
     final s = ref.watch(settingsProvider).value;
     final notifier = ref.read(settingsProvider.notifier);
     final privacyRequired =
-        ref.watch(privacyOptionsStatusProvider) == PrivacyOptionsStatus.required;
+        ref.watch(privacyOptionsStatusProvider) ==
+        PrivacyOptionsStatus.required;
 
     Widget tile(
       String label,

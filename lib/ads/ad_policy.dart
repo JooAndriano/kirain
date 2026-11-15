@@ -6,7 +6,7 @@ import '../domain/daily_bonus.dart' show formatDate;
 class AdParams {
   const AdParams({
     this.adsEnabled = true,
-    this.interstitialEveryNStages = 1,
+    this.interstitialEveryNStages = 2,
     this.interstitialStartAfterStage = 2,
     this.interstitialMinIntervalSeconds = 120,
     this.rewardedCoins = 25,
@@ -17,7 +17,8 @@ class AdParams {
 
   final bool adsEnabled;
 
-  /// Interstitial hanya pada stage kelipatan N. Nilai < 1 dianggap 1.
+  /// Interstitial hanya pada stage kelipatan N (bawaan 2: stage 2, 4, 6, ...
+  /// agar tidak mengganggu). Nilai < 1 dianggap 1.
   final int interstitialEveryNStages;
 
   /// Interstitial pertama paling cepat setelah stage ini selesai.

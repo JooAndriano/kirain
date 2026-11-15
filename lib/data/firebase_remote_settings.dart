@@ -21,7 +21,7 @@ class FirebaseRemoteSettings implements RemoteSettings {
   static const Map<String, Object> defaults = {
     imageBaseUrlKey: kDefaultImageBaseUrl,
     adsEnabledKey: true,
-    interstitialEveryNStagesKey: 1,
+    interstitialEveryNStagesKey: 2,
     interstitialStartAfterStageKey: 2,
     interstitialMinIntervalSecondsKey: 120,
     rewardedCoinsKey: 25,
