@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../ads/ad_manager.dart';
+import '../ads/rewarded_ad_controller.dart';
 import '../domain/economy.dart';
 import '../state/progress_providers.dart';
 import 'theme.dart';
@@ -17,15 +19,10 @@ class _ShopPageState extends ConsumerState<ShopPage> {
   bool _watching = false;
 
   Future<void> _watchAd() async {
-    final notifier = ref.read(progressProvider.notifier);
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _watching = true);
-    // TODO: ganti dengan rewarded ad di tahap 4. Sementara simulasi delay.
-    await Future<void>.delayed(const Duration(milliseconds: 1500));
-    await notifier.addCoins(Economy.adReward);
-    messenger.showSnackBar(
-      const SnackBar(content: Text('+${Economy.adReward} koin!')),
-    );
+    final result = await ref.read(rewardedAdControllerProvider).watchForCoins();
+    messenger.showSnackBar(SnackBar(content: Text(result.message)));
     if (mounted) setState(() => _watching = false);
   }
 
@@ -42,6 +39,9 @@ class _ShopPageState extends ConsumerState<ShopPage> {
   @override
   Widget build(BuildContext context) {
     final offer = ref.watch(dailyBonusOfferProvider);
+    final params = ref.watch(adParamsProvider);
+    final watchedToday = ref.watch(rewardedCountTodayProvider) ?? 0;
+    final capReached = watchedToday >= params.rewardedDailyCap;
     final text = Theme.of(context).textTheme;
 
     return Scaffold(
@@ -70,7 +70,11 @@ class _ShopPageState extends ConsumerState<ShopPage> {
           _ShopCard(
             icon: Icons.ondemand_video_rounded,
             title: 'Tonton Iklan',
-            subtitle: 'Dapatkan +${Economy.adReward} koin',
+            subtitle: capReached
+                ? 'Batas iklan hari ini tercapai'
+                : 'Dapatkan +${params.rewardedCoins} koin · '
+                      'sisa ${params.rewardedDailyCap - watchedToday} '
+                      'hari ini',
             action: FilledButton(
               onPressed: _watching ? null : _watchAd,
               child: _watching
@@ -78,7 +82,7 @@ class _ShopPageState extends ConsumerState<ShopPage> {
                       dimension: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Tonton Iklan (+${Economy.adReward} koin)'),
+                  : Text('Tonton Iklan (+${params.rewardedCoins} koin)'),
             ),
           ),
           const SizedBox(height: 24),

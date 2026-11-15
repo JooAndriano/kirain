@@ -48,6 +48,8 @@ class Progress {
     this.inProgress,
     this.lastDailyBonusDate,
     this.dailyStreak = 0,
+    this.rewardedAdDate,
+    this.rewardedAdCount = 0,
   }) : stageStars = Map.unmodifiable(stageStars),
        stageBestScore = Map.unmodifiable(stageBestScore),
        clearedPuzzleIds = Set.unmodifiable(clearedPuzzleIds);
@@ -57,8 +59,12 @@ class Progress {
 
   static const int initialCoins = 50;
 
-  /// Versi format JSON. Data dengan versi lain diabaikan (reset ke default).
-  static const int schemaVersion = 2;
+  /// Versi format JSON. v3 menambah rewardedAdDate/rewardedAdCount.
+  static const int schemaVersion = 3;
+
+  /// Versi lama yang masih bisa dibaca (field baru memakai default).
+  /// Versi lain diabaikan (reset ke default).
+  static const Set<int> readableSchemaVersions = {2, 3};
 
   final int coins;
   final int highestUnlockedStage;
@@ -79,6 +85,13 @@ class Progress {
   final String? lastDailyBonusDate;
   final int dailyStreak;
 
+  /// Tanggal lokal (yyyy-MM-dd) rewarded terakhir ditonton, null jika belum.
+  final String? rewardedAdDate;
+
+  /// Jumlah rewarded pada [rewardedAdDate]. Pakai AdPolicy.rewardedCountToday
+  /// untuk jumlah hari ini (otomatis 0 saat ganti hari).
+  final int rewardedAdCount;
+
   Progress copyWith({
     int? coins,
     int? highestUnlockedStage,
@@ -89,6 +102,8 @@ class Progress {
     bool clearInProgress = false,
     String? lastDailyBonusDate,
     int? dailyStreak,
+    String? rewardedAdDate,
+    int? rewardedAdCount,
   }) {
     return Progress(
       coins: coins ?? this.coins,
@@ -99,6 +114,8 @@ class Progress {
       inProgress: clearInProgress ? null : (inProgress ?? this.inProgress),
       lastDailyBonusDate: lastDailyBonusDate ?? this.lastDailyBonusDate,
       dailyStreak: dailyStreak ?? this.dailyStreak,
+      rewardedAdDate: rewardedAdDate ?? this.rewardedAdDate,
+      rewardedAdCount: rewardedAdCount ?? this.rewardedAdCount,
     );
   }
 
@@ -112,12 +129,14 @@ class Progress {
     'inProgress': inProgress?.toJson(),
     'lastDailyBonusDate': lastDailyBonusDate,
     'dailyStreak': dailyStreak,
+    'rewardedAdDate': rewardedAdDate,
+    'rewardedAdCount': rewardedAdCount,
   };
 
-  /// Melempar [FormatException] jika [Progress.schemaVersion] tidak cocok
-  /// (format lama), dan TypeError/FormatException jika isinya rusak.
+  /// Melempar [FormatException] jika versi tidak ada di
+  /// [readableSchemaVersions] (format lama), dan TypeError/FormatException jika isinya rusak.
   factory Progress.fromJson(Map<String, dynamic> json) {
-    if (json['schemaVersion'] != schemaVersion) {
+    if (!readableSchemaVersions.contains(json['schemaVersion'])) {
       throw FormatException(
         'Versi progress ${json['schemaVersion']} != $schemaVersion',
       );
@@ -135,6 +154,8 @@ class Progress {
       inProgress: StageRun.fromJson(json['inProgress']),
       lastDailyBonusDate: json['lastDailyBonusDate'] as String?,
       dailyStreak: (json['dailyStreak'] as num?)?.toInt() ?? 0,
+      rewardedAdDate: json['rewardedAdDate'] as String?,
+      rewardedAdCount: (json['rewardedAdCount'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -173,7 +194,9 @@ class Progress {
       other.clearedPuzzleIds.containsAll(clearedPuzzleIds) &&
       other.inProgress == inProgress &&
       other.lastDailyBonusDate == lastDailyBonusDate &&
-      other.dailyStreak == dailyStreak;
+      other.dailyStreak == dailyStreak &&
+      other.rewardedAdDate == rewardedAdDate &&
+      other.rewardedAdCount == rewardedAdCount;
 
   @override
   int get hashCode => Object.hash(
@@ -185,6 +208,8 @@ class Progress {
     inProgress,
     lastDailyBonusDate,
     dailyStreak,
+    rewardedAdDate,
+    rewardedAdCount,
   );
 
   @override

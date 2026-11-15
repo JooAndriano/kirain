@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../ads/ad_manager.dart';
 import '../state/progress_providers.dart';
 import 'home_page.dart';
 import 'theme.dart';
@@ -67,6 +70,9 @@ class _SplashPageState extends ConsumerState<SplashPage>
   }
 
   Future<void> _start() async {
+    // Consent + SDK iklan berjalan di latar: tidak memblokir startup; jika
+    // gagal atau tidak diizinkan, app tetap jalan tanpa iklan.
+    unawaited(ref.read(adManagerProvider).init());
     // Error progress ditampilkan oleh HomePage; di sini cukup ditunggu.
     await Future.wait<void>([
       _c.forward().orCancel.then((_) {}, onError: (Object _) {}),

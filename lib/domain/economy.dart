@@ -9,9 +9,6 @@ abstract final class Economy {
   /// Zoom Out GRATIS; hanya mengurangi poin (lihat ScoreEngine).
   static const int zoomOutCost = 0;
 
-  /// Hadiah menonton iklan di Toko.
-  static const int adReward = 25;
-
   /// Bonus saat sebuah stage pertama kali tuntas.
   static const int stageClearBonusCoins = 15;
 

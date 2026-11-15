@@ -105,6 +105,16 @@ void main() {
       expect(e.removeWrongLetters(), isFalse);
     });
 
+    test('setelah correct, gambar tampil penuh tanpa mengubah skor', () {
+      final e = engine('GITAR');
+      expect(e.snapshot.displayScale, 8);
+      type(e, 'GITAR');
+      final s = e.snapshot;
+      expect(s.displayScale, 1);
+      expect(s.scale, 8);
+      expect(s.score, 100);
+    });
+
     test('zoomOut mengubah skala dan poin', () {
       final e = engine('GITAR');
       expect(e.zoomOut(), isTrue);

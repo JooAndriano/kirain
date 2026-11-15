@@ -68,6 +68,11 @@ class GameSnapshot {
   final bool canReveal;
 
   bool get canZoomOut => nextBasePoint != null && status == GameStatus.playing;
+
+  /// Skala gambar yang ditampilkan. Setelah benar, gambar dibuka penuh
+  /// agar pemain bisa melihat gambar utuhnya. Skor tetap memakai [scale].
+  double get displayScale =>
+      status == GameStatus.correct ? ScoreEngine.scales.last : scale;
 }
 
 /// Aturan papan huruf dan kotak jawaban untuk satu gambar.

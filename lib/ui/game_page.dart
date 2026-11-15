@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../ads/ad_manager.dart';
+import '../ads/adaptive_banner_ad.dart';
+import '../ads/rewarded_ad_controller.dart';
 import '../data/image_url_resolver.dart';
 import '../domain/economy.dart';
 import '../domain/game_engine.dart';
@@ -23,6 +26,9 @@ import 'widgets/zoom_image.dart';
 /// Halaman main untuk gambar ke-[slot] (1..3) pada stage [stage].
 class GamePage extends ConsumerWidget {
   const GamePage({super.key, required this.stage, this.slot = 1});
+
+  /// Jeda sebelum dialog hasil muncul, agar gambar penuh sempat terlihat.
+  static const resultDialogDelay = Duration(milliseconds: 1200);
 
   final int stage;
   final int slot;
@@ -111,9 +117,14 @@ class _GameViewState extends ConsumerState<_GameView> {
         ref.read(gameFeedbackProvider).correct();
       }
     });
-    // Dialog muncul setelah hasil gambar tersimpan.
+    // Dialog muncul setelah hasil gambar tersimpan, diberi jeda agar
+    // gambar penuh sempat terlihat dulu.
     ref.listen(provider.select((s) => s.saved), (prev, next) {
-      if (prev != true && next) _showResult(context, ref);
+      if (prev != true && next) {
+        Future<void>.delayed(GamePage.resultDialogDelay, () {
+          if (context.mounted) _showResult(context, ref);
+        });
+      }
     });
 
     final s = state.snapshot;
@@ -145,7 +156,7 @@ class _GameViewState extends ConsumerState<_GameView> {
                       state.puzzle,
                       ref.watch(imageBaseUrlProvider),
                     ),
-                    scale: s.scale,
+                    scale: s.displayScale,
                     focusX: state.puzzle.focusX,
                     focusY: state.puzzle.focusY,
                     onStatusChanged: (status) => controller.setImageReady(
@@ -195,27 +206,32 @@ class _GameViewState extends ConsumerState<_GameView> {
                 ],
               ),
               Text('Zoom Out gratis · hint: -10 poin', style: text.bodySmall),
-              // Ruang untuk banner iklan (tahap berikutnya).
-              const SizedBox(height: 60),
             ],
           ),
         ),
       ),
+      // Banner di ruang tetap 60dp, berjarak dari tombol hint, dengan SafeArea.
+      bottomNavigationBar: const AdaptiveBannerAd(),
     );
   }
 
   void _showNotEnoughCoins(BuildContext context) {
+    final coins = ref.read(adParamsProvider).rewardedCoins;
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Koin tidak cukup'),
-        content: const Text('Dapatkan koin tambahan di Toko.'),
+        content: const Text(
+          'Tonton iklan untuk koin tambahan, atau kunjungi Toko.',
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actionsOverflowAlignment: OverflowBarAlignment.center,
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Batal'),
           ),
-          FilledButton(
+          TextButton(
             onPressed: () {
               Navigator.of(dialogContext).pop();
               Navigator.of(
@@ -224,9 +240,23 @@ class _GameViewState extends ConsumerState<_GameView> {
             },
             child: const Text('Ke Toko'),
           ),
+          FilledButton.icon(
+            icon: const Icon(Icons.ondemand_video_rounded),
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              _watchRewarded(context);
+            },
+            label: Text('Tonton iklan (+$coins koin)'),
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _watchRewarded(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final result = await ref.read(rewardedAdControllerProvider).watchForCoins();
+    messenger.showSnackBar(SnackBar(content: Text(result.message)));
   }
 
   void _replaceWith(BuildContext context, Widget page) {
@@ -311,8 +341,17 @@ class _GameViewState extends ConsumerState<_GameView> {
           child: const Text('Pilih Stage'),
         ),
         FilledButton(
-          onPressed: () {
+          onPressed: () async {
             Navigator.of(dialogContext).pop();
+            if (nextStage != null) {
+              // Interstitial hanya atas aksi pemain setelah stage selesai;
+              // navigasi menunggu iklan ditutup (atau langsung jika tidak
+              // tampil).
+              await ref
+                  .read(adManagerProvider)
+                  .maybeShowInterstitialAfterStage(clear.stage);
+            }
+            if (!context.mounted) return;
             _replaceWith(
               context,
               nextStage == null

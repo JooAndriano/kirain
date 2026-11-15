@@ -1,6 +1,8 @@
 import 'dart:math';
 
+import '../ads/ad_policy.dart';
 import '../data/progress.dart';
+import 'daily_bonus.dart' show formatDate;
 import 'economy.dart';
 import 'stage.dart';
 
@@ -125,5 +127,25 @@ PuzzleSolvedResult applyPuzzleSolved(
       firstClear: firstClear,
       bonusCoins: bonus,
     ),
+  );
+}
+
+/// Hadiah satu rewarded yang ditonton sampai selesai: tambah [coins] dan
+/// naikkan hitungan rewarded hari ini (tanggal lokal [now]; reset saat ganti
+/// hari). Hanya dipanggil dari callback onUserEarnedReward.
+Progress applyRewardedAd(
+  Progress p, {
+  required int coins,
+  required DateTime now,
+}) {
+  final countToday = AdPolicy.rewardedCountToday(
+    storedDate: p.rewardedAdDate,
+    storedCount: p.rewardedAdCount,
+    now: now,
+  );
+  return p.copyWith(
+    coins: p.coins + max(0, coins),
+    rewardedAdDate: formatDate(now),
+    rewardedAdCount: countToday + 1,
   );
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kirain/ads/ad_policy.dart';
 import 'package:kirain/data/puzzle.dart';
 import 'package:kirain/data/puzzle_repository.dart';
 import 'package:kirain/data/remote_settings.dart';
@@ -27,6 +28,8 @@ class FakeRemoteSettings implements RemoteSettings {
 
   @override
   String imageBaseUrl;
+  @override
+  AdParams adParams = AdParams.defaults;
   int initCalls = 0;
 
   @override

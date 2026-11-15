@@ -13,3 +13,8 @@
 - Dummy levels hanya fallback saat Firestore gagal dan tidak ada cache. Gambar dummy = asset lokal.
 - Gambar online selalu lewat LevelImage widget (cached_network_image). Jangan memanggil Image.network langsung.
 - Folder tools/ berisi skrip admin. serviceAccountKey.json JANGAN pernah di-commit; pastikan ada di .gitignore.
+- Iklan hanya lewat lib/ads/ (AdManager, AdPolicy). Widget tidak memanggil google_mobile_ads langsung.
+- Selama pengembangan SELALU pakai ID iklan tes Google. ID asli hanya diisi di ads_config.dart saat siap rilis.
+- Hadiah rewarded hanya diberikan di callback onUserEarnedReward.
+- Interstitial hanya setelah stage selesai, atas aksi pemain. Tidak pernah di tengah bermain.
+- Keputusan kapan iklan boleh tampil ada di AdPolicy (Dart murni) dan wajib ditest.

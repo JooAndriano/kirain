@@ -1,7 +1,12 @@
+import '../ads/ad_policy.dart';
+
 /// Pengaturan jarak jauh (Remote Config). Read-only bagi app.
 abstract class RemoteSettings {
   /// Prefix URL gambar puzzle; URL = imageBaseUrl + Puzzle.imageFile.
   String get imageBaseUrl;
+
+  /// Parameter iklan. Selalu valid; nilai bawaan aman bila belum di-fetch.
+  AdParams get adParams;
 
   /// Ambil dan aktifkan nilai terbaru. Tidak boleh melempar: jika gagal,
   /// nilai default/terakhir tetap dipakai.
@@ -19,6 +24,9 @@ class DefaultRemoteSettings implements RemoteSettings {
 
   @override
   String get imageBaseUrl => kDefaultImageBaseUrl;
+
+  @override
+  AdParams get adParams => AdParams.defaults;
 
   @override
   Future<void> init() async {}

@@ -1,7 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Titik kait setelah sebuah stage tuntas. Nanti dipakai untuk iklan
-/// interstitial; sekarang belum ada iklan sungguhan.
+/// Titik kait setelah sebuah stage tuntas (sebelum dialog). Interstitial
+/// TIDAK dipasang di sini: iklan hanya tampil atas aksi pemain lewat
+/// AdManager.maybeShowInterstitialAfterStage di dialog stage selesai.
 abstract class StageCompletionHook {
   /// Dipanggil sekali setiap stage tuntas, sebelum dialog stage selesai
   /// ditampilkan. Tidak boleh melempar.

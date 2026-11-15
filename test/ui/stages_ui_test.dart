@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kirain/ads/ad_manager.dart';
+import 'package:kirain/ads/ad_policy.dart';
 import 'package:kirain/data/image_url_resolver.dart';
 import 'package:kirain/data/progress.dart';
 import 'package:kirain/data/puzzle_repository.dart';
@@ -14,6 +16,7 @@ import 'package:kirain/ui/all_stages_done_page.dart';
 import 'package:kirain/ui/game_page.dart';
 import 'package:kirain/ui/home_page.dart';
 import 'package:kirain/ui/level_image.dart';
+import 'package:kirain/ui/shop_page.dart';
 import 'package:kirain/ui/stage_select_page.dart';
 import 'package:kirain/ui/widgets/offline_banner.dart';
 import 'package:kirain/ui/widgets/zoom_image.dart';
@@ -40,8 +43,13 @@ void main() {
     bool online = true,
     bool useDummy = false,
     StageCompletionHook? hook,
+    AdManager? ads,
+    AdParams? adParams,
   }) => ProviderScope(
     overrides: [
+      if (ads != null) adManagerProvider.overrideWithValue(ads),
+      if (adParams != null)
+        remoteSettingsProvider.overrideWithValue(FixedRemoteSettings(adParams)),
       // Tanpa override repo: selalu gagal -> stage dummy (aset lokal).
       if (!useDummy) puzzleRepositoryProvider.overrideWithValue(puzzles),
       progressRepositoryProvider.overrideWithValue(progress),
@@ -200,6 +208,9 @@ void main() {
         await tester.tap(reveal);
         await tester.pumpAndSettle();
       }
+      // Tunggu jeda tampilan gambar penuh sebelum dialog hasil.
+      await tester.pump(GamePage.resultDialogDelay);
+      await tester.pumpAndSettle();
     }
 
     testWidgets(
@@ -210,9 +221,10 @@ void main() {
         addTearDown(tester.view.reset);
 
         final hook = _SpyHook();
+        final ads = FakeAdManager()..interstitialGate = Completer();
         progress.saved = Progress(coins: 5000, highestUnlockedStage: 1);
         await tester.pumpWidget(
-          app(const GamePage(stage: 1), useDummy: true, hook: hook),
+          app(const GamePage(stage: 1), useDummy: true, hook: hook, ads: ads),
         );
         await settleRoute(tester);
         expect(find.text('Stage 1 · Gambar 1/3'), findsOneWidget);
@@ -236,7 +248,14 @@ void main() {
         expect(hook.stages, [1]);
         expect(progress.saved.highestUnlockedStage, 2);
 
+        expect(ads.interstitialStages, isEmpty); // tidak saat bermain
         await tester.tap(find.text('Stage berikutnya'));
+        await settleRoute(tester);
+        // Interstitial "tampil": navigasi menunggu sampai ditutup.
+        expect(ads.interstitialStages, [1]);
+        expect(find.text('Stage 2 · Gambar 1/3'), findsNothing);
+
+        ads.interstitialGate!.complete();
         await settleRoute(tester);
         expect(find.text('Stage 2 · Gambar 1/3'), findsOneWidget);
       },
@@ -255,8 +274,9 @@ void main() {
         highestUnlockedStage: 2,
         inProgress: StageRun(stage: 2, solved: const {1: 100, 2: 100}),
       );
+      final ads = FakeAdManager();
       await tester.pumpWidget(
-        app(const GamePage(stage: 2, slot: 3), useDummy: true),
+        app(const GamePage(stage: 2, slot: 3), useDummy: true, ads: ads),
       );
       await settleRoute(tester);
       await solveCurrent(tester);
@@ -265,6 +285,7 @@ void main() {
       await settleRoute(tester);
       expect(find.byType(AllStagesDonePage), findsOneWidget);
       expect(find.text('Semua stage selesai!'), findsOneWidget);
+      expect(ads.interstitialStages, isEmpty); // hanya "Stage berikutnya"
     });
   });
 
@@ -367,6 +388,136 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('Gambar belum bisa dimuat'), findsOneWidget);
+    });
+  });
+
+  group('Iklan', () {
+    Future<void> openNotEnoughCoins(
+      WidgetTester tester,
+      FakeAdManager ads,
+    ) async {
+      tester.view.physicalSize = const Size(1600, 3200);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(tester.view.reset);
+      progress.saved = Progress(coins: 0, highestUnlockedStage: 1);
+      await tester.pumpWidget(
+        app(const GamePage(stage: 1), useDummy: true, ads: ads),
+      );
+      await tester.pump();
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 300)),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Buka Huruf'));
+      await tester.pumpAndSettle();
+      expect(find.text('Koin tidak cukup'), findsOneWidget);
+    }
+
+    testWidgets('Koin tidak cukup -> Tonton iklan: koin hanya saat reward', (
+      tester,
+    ) async {
+      final ads = FakeAdManager();
+      await openNotEnoughCoins(tester, ads);
+      await tester.tap(find.text('Tonton iklan (+25 koin)'));
+      await tester.pumpAndSettle();
+      expect(ads.rewardedShows, 1);
+      expect(find.text('+25 koin!'), findsOneWidget);
+      expect(progress.saved.coins, 25);
+      expect(progress.saved.rewardedAdCount, 1);
+    });
+
+    testWidgets('Koin tidak cukup -> iklan ditutup sebelum selesai', (
+      tester,
+    ) async {
+      final ads = FakeAdManager(earnReward: false);
+      await openNotEnoughCoins(tester, ads);
+      await tester.tap(find.text('Tonton iklan (+25 koin)'));
+      await tester.pumpAndSettle();
+      expect(progress.saved.coins, 0);
+      expect(
+        find.text('Tonton iklan sampai selesai untuk mendapat koin'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('Koin tidak cukup -> iklan belum tersedia', (tester) async {
+      final ads = FakeAdManager(rewardedReady: false);
+      await openNotEnoughCoins(tester, ads);
+      await tester.tap(find.text('Tonton iklan (+25 koin)'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Iklan belum tersedia, coba lagi sebentar lagi'),
+        findsOneWidget,
+      );
+      expect(progress.saved.coins, 0);
+    });
+
+    testWidgets('Toko: rewarded asli menambah koin', (tester) async {
+      final ads = FakeAdManager();
+      progress.saved = Progress(
+        coins: 10,
+        highestUnlockedStage: 1,
+        lastDailyBonusDate: '2099-01-01',
+      );
+      await tester.pumpWidget(app(const ShopPage(), ads: ads));
+      await tester.pumpAndSettle();
+      expect(find.text('Dapatkan +25 koin · sisa 10 hari ini'), findsOneWidget);
+      await tester.tap(find.text('Tonton Iklan (+25 koin)'));
+      await tester.pumpAndSettle();
+      expect(find.text('+25 koin!'), findsOneWidget);
+      expect(progress.saved.coins, 35);
+      expect(find.text('Dapatkan +25 koin · sisa 9 hari ini'), findsOneWidget);
+    });
+
+    testWidgets('Toko: batas harian tercapai', (tester) async {
+      final ads = FakeAdManager();
+      final today = DateTime.now();
+      final key =
+          '${today.year.toString().padLeft(4, '0')}-'
+          '${today.month.toString().padLeft(2, '0')}-'
+          '${today.day.toString().padLeft(2, '0')}';
+      progress.saved = Progress(
+        coins: 10,
+        highestUnlockedStage: 1,
+        lastDailyBonusDate: '2099-01-01',
+        rewardedAdDate: key,
+        rewardedAdCount: 10,
+      );
+      await tester.pumpWidget(app(const ShopPage(), ads: ads));
+      await tester.pumpAndSettle();
+      expect(find.text('Batas iklan hari ini tercapai'), findsOneWidget);
+      await tester.tap(find.text('Tonton Iklan (+25 koin)'));
+      await tester.pumpAndSettle();
+      expect(ads.rewardedShows, 0);
+      expect(find.text('Batas iklan hari ini tercapai'), findsNWidgets(2));
+      expect(progress.saved.coins, 10);
+    });
+
+    testWidgets('slot banner 60dp dicadangkan di StageSelect', (tester) async {
+      await tester.pumpWidget(app(const StageSelectPage()));
+      await tester.pumpAndSettle();
+      final slot = find.byKey(const ValueKey('banner-slot'));
+      expect(slot, findsOneWidget);
+      expect(tester.getSize(slot).height, 60);
+    });
+
+    testWidgets('slot banner 60dp di GamePage', (tester) async {
+      await tester.pumpWidget(app(const GamePage(stage: 1), useDummy: true));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      final slot = find.byKey(const ValueKey('banner-slot'));
+      expect(tester.getSize(slot).height, 60);
+    });
+
+    testWidgets('adsEnabled=false -> tanpa slot banner', (tester) async {
+      await tester.pumpWidget(
+        app(
+          const StageSelectPage(),
+          adParams: const AdParams(adsEnabled: false),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('banner-slot')), findsNothing);
     });
   });
 }

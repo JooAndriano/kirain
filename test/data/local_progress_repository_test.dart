@@ -35,6 +35,8 @@ void main() {
       inProgress: StageRun(stage: 3, solved: {1: 80}),
       lastDailyBonusDate: '2026-11-13',
       dailyStreak: 4,
+      rewardedAdDate: '2026-11-13',
+      rewardedAdCount: 3,
     );
     await repo.save(saved);
 
@@ -72,5 +74,40 @@ void main() {
     });
     final repo = await repoWith({LocalProgressRepository.storageKey: other});
     expect(await repo.load(), Progress.initial());
+  });
+
+  test('data schemaVersion 2 (sebelum iklan) dimigrasi tanpa kehilangan '
+      'progress', () async {
+    final v2 = jsonEncode({
+      'schemaVersion': 2,
+      'coins': 321,
+      'highestUnlockedStage': 5,
+      'stageStars': {'1': 3, '2': 2},
+      'stageBestScore': {'1': 250},
+      'clearedPuzzleIds': ['stage_001_1'],
+      'inProgress': {
+        'stage': 5,
+        'solved': {'1': 90},
+      },
+      'lastDailyBonusDate': '2026-11-12',
+      'dailyStreak': 3,
+    });
+    final repo = await repoWith({LocalProgressRepository.storageKey: v2});
+    final p = await repo.load();
+    expect(p.coins, 321);
+    expect(p.highestUnlockedStage, 5);
+    expect(p.stageStars, {1: 3, 2: 2});
+    expect(p.inProgress, StageRun(stage: 5, solved: const {1: 90}));
+    expect(p.dailyStreak, 3);
+    expect(p.rewardedAdDate, isNull);
+    expect(p.rewardedAdCount, 0);
+
+    // Save berikutnya menulis format terbaru.
+    await repo.save(p);
+    final raw = (await SharedPreferences.getInstance()).getString(
+      LocalProgressRepository.storageKey,
+    );
+    expect(jsonDecode(raw!)['schemaVersion'], Progress.schemaVersion);
+    expect(Progress.schemaVersion, 3);
   });
 }

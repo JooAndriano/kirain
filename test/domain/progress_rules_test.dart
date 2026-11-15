@@ -125,4 +125,34 @@ void main() {
     expect(identical(applyStartStage(p, 1), p), isTrue);
     expect(applyStartStage(p, 2).inProgress, StageRun(stage: 2));
   });
+
+  group('applyRewardedAd', () {
+    final p = Progress(coins: 10, highestUnlockedStage: 2);
+
+    test('hari pertama: koin + hitungan 1, tanggal lokal', () {
+      final r = applyRewardedAd(p, coins: 25, now: DateTime(2026, 11, 15, 8));
+      expect(r.coins, 35);
+      expect(r.rewardedAdDate, '2026-11-15');
+      expect(r.rewardedAdCount, 1);
+      expect(r.highestUnlockedStage, 2);
+    });
+
+    test('hari yang sama: hitungan bertambah', () {
+      final q = p.copyWith(rewardedAdDate: '2026-11-15', rewardedAdCount: 4);
+      final r = applyRewardedAd(q, coins: 25, now: DateTime(2026, 11, 15, 22));
+      expect(r.rewardedAdCount, 5);
+    });
+
+    test('hari berikutnya: hitungan mulai dari 1 lagi', () {
+      final q = p.copyWith(rewardedAdDate: '2026-11-14', rewardedAdCount: 10);
+      final r = applyRewardedAd(q, coins: 25, now: DateTime(2026, 11, 15));
+      expect(r.rewardedAdDate, '2026-11-15');
+      expect(r.rewardedAdCount, 1);
+    });
+
+    test('koin negatif dari konfigurasi tidak mengurangi koin', () {
+      final r = applyRewardedAd(p, coins: -5, now: DateTime(2026, 11, 15));
+      expect(r.coins, 10);
+    });
+  });
 }

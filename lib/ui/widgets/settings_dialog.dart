@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../ads/ad_manager.dart';
 import '../../state/settings_providers.dart';
 import '../theme.dart';
 
@@ -14,6 +15,8 @@ class SettingsDialog extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(settingsProvider).value;
     final notifier = ref.read(settingsProvider.notifier);
+    final privacyRequired =
+        ref.watch(privacyOptionsStatusProvider) == PrivacyOptionsStatus.required;
 
     Widget tile(
       String label,
@@ -53,6 +56,21 @@ class SettingsDialog extends ConsumerWidget {
             s?.vibration,
             notifier.setVibration,
           ),
+          // Wajib bagi pengguna yang diminta consent (mis. EEA/UK): entri
+          // untuk mengubah pilihan privasi iklan.
+          if (privacyRequired)
+            ListTile(
+              leading: const Icon(
+                Icons.privacy_tip_outlined,
+                color: KirainColors.primary,
+              ),
+              title: const Text('Pengaturan privasi'),
+              onTap: () {
+                final ads = ref.read(adManagerProvider);
+                Navigator.of(context).pop();
+                ads.showPrivacyOptions();
+              },
+            ),
         ],
       ),
       actions: [

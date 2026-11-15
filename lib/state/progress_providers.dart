@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../ads/ad_policy.dart';
 import '../data/progress.dart';
 import '../data/progress_repository.dart';
 import '../domain/daily_bonus.dart';
@@ -30,6 +31,18 @@ final dailyBonusOfferProvider = Provider<DailyBonusOffer?>((ref) {
   );
 });
 
+/// Jumlah rewarded yang sudah ditonton hari ini (reset otomatis saat ganti
+/// hari), null jika progress belum dimuat.
+final rewardedCountTodayProvider = Provider<int?>((ref) {
+  final p = ref.watch(progressProvider).value;
+  if (p == null) return null;
+  return AdPolicy.rewardedCountToday(
+    storedDate: p.rewardedAdDate,
+    storedCount: p.rewardedAdCount,
+    now: ref.watch(clockProvider)(),
+  );
+});
+
 class ProgressNotifier extends AsyncNotifier<Progress> {
   ProgressRepository get _repo => ref.read(progressRepositoryProvider);
 
@@ -53,6 +66,15 @@ class ProgressNotifier extends AsyncNotifier<Progress> {
     if (p.coins < amount) return false;
     await _update(p.copyWith(coins: p.coins - amount));
     return true;
+  }
+
+  /// Hadiah rewarded: HANYA dipanggil dari onUserEarnedReward. Menambah koin
+  /// dan hitungan rewarded hari ini, lalu langsung disimpan.
+  Future<void> grantRewardedAd(int coins) async {
+    final p = await future;
+    await _update(
+      applyRewardedAd(p, coins: coins, now: ref.read(clockProvider)()),
+    );
   }
 
   /// Simpan satu gambar benar: koin gambar jika pertama kali, catat skor di

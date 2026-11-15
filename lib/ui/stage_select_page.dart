@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../ads/adaptive_banner_ad.dart';
 import '../domain/stage.dart';
 import '../state/progress_providers.dart';
 import '../state/stages_controller.dart';
@@ -68,6 +69,7 @@ class StageSelectPage extends ConsumerWidget {
         ],
       ),
       body: body,
+      bottomNavigationBar: const AdaptiveBannerAd(),
     );
   }
 }

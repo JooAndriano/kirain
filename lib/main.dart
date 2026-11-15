@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'ads/ad_manager.dart';
+import 'ads/google_ad_manager.dart';
 import 'data/firebase_remote_settings.dart';
 import 'data/firestore_puzzle_repository.dart';
 import 'data/puzzle_cache.dart';
@@ -56,6 +58,15 @@ Future<void> main() async {
         // Tanpa Firebase, analytics tetap default (SilentAnalytics).
         if (firebase.ready)
           analyticsProvider.overrideWithValue(FirebaseGameAnalytics()),
+        // Iklan (TES selama ID asli kosong). init() dipanggil di SplashPage.
+        adManagerProvider.overrideWith((ref) {
+          final manager = GoogleAdManager(
+            params: () => ref.read(remoteSettingsProvider).adParams,
+            clock: ref.read(clockProvider),
+          );
+          ref.onDispose(manager.dispose);
+          return manager;
+        }),
       ],
       child: const KirainApp(),
     ),

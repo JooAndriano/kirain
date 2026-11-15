@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../ads/ad_manager.dart';
 import '../state/firebase_providers.dart';
 
 /// Halaman debug (hanya dibuka saat kDebugMode) untuk memeriksa koneksi
@@ -67,6 +68,8 @@ class _ReportView extends StatelessWidget {
             _Row(label: e.key, value: '${e.value}'),
           _Row(label: 'URL gambar', value: r.firstImageUrl ?? '-'),
         ],
+        const Divider(height: 32),
+        const AdsDebugSection(),
       ],
     );
   }
@@ -94,6 +97,64 @@ class _Row extends StatelessWidget {
             ),
       title: Text(label),
       subtitle: SelectableText(detail == null ? value : '$value\n$detail'),
+    );
+  }
+}
+
+/// Bagian "Ads": status consent, SDK, muat iklan, dan log (mode debug).
+class AdsDebugSection extends ConsumerWidget {
+  const AdsDebugSection({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final manager = ref.watch(adManagerProvider);
+    final params = ref.watch(adParamsProvider);
+    final text = Theme.of(context).textTheme;
+    return ValueListenableBuilder<AdStatus>(
+      valueListenable: manager.status,
+      builder: (context, s, _) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Ads', style: text.titleMedium),
+          _Row(
+            label: 'Mode',
+            value: s.useTestAds ? 'Iklan TES' : 'Iklan ASLI',
+            ok: s.useTestAds,
+          ),
+          _Row(label: 'Consent', value: s.consent),
+          _Row(label: 'Privacy options', value: s.privacyOptions.name),
+          _Row(
+            label: 'canRequestAds',
+            value: '${s.canRequestAds}',
+            ok: s.canRequestAds,
+          ),
+          _Row(
+            label: 'MobileAds',
+            value: s.sdkInitialized ? 'siap' : 'belum diinisialisasi',
+            ok: s.sdkInitialized,
+          ),
+          _Row(label: 'Interstitial', value: s.interstitial.name),
+          _Row(label: 'Rewarded', value: s.rewarded.name),
+          _Row(
+            label: 'Iklan layar penuh terakhir',
+            value: s.lastFullScreenAdAt?.toIso8601String() ?? '-',
+          ),
+          _Row(label: 'Remote Config', value: '$params'),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              icon: const Icon(Icons.privacy_tip_outlined),
+              label: const Text('Reset consent'),
+              onPressed: manager.resetConsent,
+            ),
+          ),
+          if (s.log.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text('Log', style: text.titleSmall),
+            for (final line in s.log) Text(line, style: text.bodySmall),
+          ],
+        ],
+      ),
     );
   }
 }
