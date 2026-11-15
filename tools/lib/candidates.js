@@ -156,7 +156,8 @@ function renderIndexHtml(groups, { generatedAt = new Date() } = {}) {
         <figcaption>
           <div class="where">${esc(label)}</div>
           <div class="file"><code>${esc(file)}</code>
-            <button type="button" data-copy="${esc(file)}">Salin</button></div>
+            <button type="button" data-copy="${esc(file)}">Salin</button>
+            <button type="button" data-download="${esc(h.largeImageURL)}" data-file="${esc(file)}">Unduh</button></div>
           <div class="meta"><a href="${esc(h.pageURL)}" target="_blank" rel="noopener">Pixabay #${esc(h.id)}</a> · ${esc(h.user)}</div>
         </figcaption>
       </figure>`,
@@ -198,7 +199,9 @@ function renderIndexHtml(groups, { generatedAt = new Date() } = {}) {
   .where { font-weight: 600; }
   .file { display: flex; gap: 6px; align-items: center; margin: 4px 0; }
   .file code { color: var(--accent); font-weight: 600; word-break: break-all; }
-  .file button { margin-left: auto; font-size: 12px; cursor: pointer; }
+  .file button { font-size: 12px; cursor: pointer; }
+  .file button[data-copy] { margin-left: auto; }
+  .card.picked { outline: 3px solid var(--accent); }
   .meta, .empty { color: var(--muted); font-size: 12px; }
   .meta a { color: inherit; }
 </style>
@@ -206,11 +209,41 @@ function renderIndexHtml(groups, { generatedAt = new Date() } = {}) {
 <body>
 <h1>Kandidat Gambar Kirain</h1>
 <p class="intro">Dibuat ${esc(generatedAt.toISOString())} · ${groups.length} kata.
-Klik gambar untuk membuka versi besar, unduh, lalu simpan ke <code>tools/picked/</code>
-dengan nama file yang tertulis di bawahnya. Setelah itu jalankan <code>node convert_picked.js</code>.</p>
+Klik <b>Unduh</b>: gambar besar tersimpan di folder Downloads dengan nama file yang benar.
+Pindahkan ke <code>tools/picked/</code> (atau atur browser agar menanyakan lokasi simpan, lalu pilih
+<code>tools/picked/</code>). Jika unduhan langsung gagal, gambar dibuka di tab baru dan nama file
+sudah tersalin, tinggal Save As lalu paste. Setelah itu jalankan <code>node convert_picked.js</code>.</p>
 ${sections}
 <script>
-  document.addEventListener('click', (e) => {
+  document.addEventListener('click', async (e) => {
+    const d = e.target.closest('button[data-download]');
+    if (d) {
+      const url = d.dataset.download;
+      const file = d.dataset.file;
+      d.disabled = true;
+      d.textContent = 'Mengunduh…';
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const href = URL.createObjectURL(await res.blob());
+        const a = document.createElement('a');
+        a.href = href;
+        a.download = file;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(href), 1000);
+        d.textContent = 'Terunduh ✓';
+        d.closest('.card')?.classList.add('picked');
+      } catch (_) {
+        navigator.clipboard?.writeText(file).catch(() => {});
+        window.open(url, '_blank', 'noopener');
+        d.textContent = 'Buka tab (nama tersalin)';
+      } finally {
+        d.disabled = false;
+      }
+      return;
+    }
     const b = e.target.closest('button[data-copy]');
     if (!b) return;
     navigator.clipboard?.writeText(b.dataset.copy).then(() => {

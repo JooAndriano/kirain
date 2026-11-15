@@ -415,6 +415,10 @@ test('sources.csv membawa stage/slot/packId; index.html "Stage N, Gambar slot" +
   const html = renderIndexHtml(groups, { generatedAt: new Date('2026-11-14T00:00:00Z') });
   assert.match(html, /<div class="where">Stage 1, Gambar 2<\/div>/);
   assert.match(html, /<code>semangka_1\.jpg<\/code>/);
+  assert.match(
+    html,
+    /data-download="https:\/\/cdn\.pixabay\.test\/101_1280\.jpg" data-file="semangka_1\.jpg">Unduh</,
+  );
   assert.match(html, /<div class="where">Stage 2, Gambar 1<\/div>[\s\S]*?pisang_2\.jpg/);
   assert.match(html, /Gagal: Pixabay HTTP 429/);
   assert.match(html, /&quot;segar&quot;/); // tag di-escape
