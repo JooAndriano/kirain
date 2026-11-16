@@ -55,7 +55,9 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
-    final slots = [for (final c in 'BAWANGPUTIH'.split('')) SlotView(letter: c)];
+    final slots = [
+      for (final c in 'BAWANGPUTIH'.split('')) SlotView(letter: c),
+    ];
     final tapped = <int>[];
     await tester.pumpWidget(wrap(AnswerBoxes(slots: slots, onTap: tapped.add)));
 

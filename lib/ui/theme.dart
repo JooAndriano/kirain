@@ -33,6 +33,12 @@ abstract final class KirainColors {
 
   /// Tile kerangka saat daftar stage dimuat.
   static const skeleton = Color(0xFFEDE3D0);
+
+  /// Lapisan gelap tutorial di luar bagian yang disorot.
+  static const tutorialScrim = Color(0xC23B2A20);
+
+  /// Cincin berdenyut di sekeliling bagian yang disorot tutorial.
+  static const tutorialRing = accent;
 }
 
 /// Gaya tagline "Tebak gambarnya!": bulat, tebal, senada dengan wordmark.

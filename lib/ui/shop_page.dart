@@ -49,7 +49,10 @@ class _ShopPageState extends ConsumerState<ShopPage> {
         title: const Text('Toko'),
         backgroundColor: KirainColors.background,
         actions: const [
-          Padding(padding: EdgeInsets.only(right: 12), child: CoinBadge()),
+          Padding(
+            padding: EdgeInsets.only(right: 12),
+            child: CoinBadge(opensShop: false),
+          ),
         ],
       ),
       body: ListView(

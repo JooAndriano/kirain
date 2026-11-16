@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/stage.dart';
 import '../state/stages_controller.dart';
 import '../state/progress_providers.dart';
+import '../state/settings_providers.dart';
 import 'firebase_check_page.dart';
 import 'game_page.dart';
 import 'stage_select_page.dart';
@@ -13,6 +14,7 @@ import 'splash_page.dart';
 import 'theme.dart';
 import 'widgets/coin_badge.dart';
 import 'widgets/daily_bonus_dialog.dart';
+import 'widgets/how_to_play_dialog.dart';
 import 'widgets/offline_banner.dart';
 import 'widgets/settings_dialog.dart';
 
@@ -69,6 +71,27 @@ class _HomePageState extends ConsumerState<HomePage> {
                           icon: const Icon(Icons.bug_report_outlined, size: 20),
                           onPressed: () => _push(const FirebaseCheckPage()),
                         ),
+                      IconButton(
+                        tooltip: 'Cara bermain',
+                        icon: const Icon(Icons.help_outline_rounded),
+                        onPressed: () => showHowToPlayDialog(
+                          context,
+                          onPlayTutorial: next == null
+                              ? null
+                              : () async {
+                                  await ref
+                                      .read(settingsProvider.notifier)
+                                      .replayTutorial();
+                                  if (!mounted) return;
+                                  _push(
+                                    GamePage(
+                                      stage: next.stage,
+                                      slot: next.slot,
+                                    ),
+                                  );
+                                },
+                        ),
+                      ),
                       const Spacer(),
                       const CoinBadge(),
                     ],

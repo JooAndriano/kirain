@@ -9,6 +9,7 @@ import '../domain/economy.dart';
 import '../domain/game_engine.dart';
 import '../domain/progress_rules.dart';
 import '../domain/stage.dart';
+import '../domain/tutorial.dart';
 import '../state/settings_providers.dart';
 import '../state/stages_controller.dart';
 import 'all_stages_done_page.dart';
@@ -18,6 +19,7 @@ import 'shop_page.dart';
 import 'stage_select_page.dart';
 import 'theme.dart';
 import 'widgets/answer_boxes.dart';
+import 'widgets/coach_marks.dart';
 import 'widgets/coin_badge.dart';
 import 'widgets/letter_board.dart';
 import 'widgets/stars_row.dart';
@@ -81,6 +83,22 @@ class _GameView extends ConsumerStatefulWidget {
 class _GameViewState extends ConsumerState<_GameView> {
   bool _prefetched = false;
 
+  /// Penanda posisi bagian layar yang disorot tutorial.
+  final _tutorialKeys = {
+    for (final t in TutorialTarget.values) t: GlobalKey(debugLabel: t.name),
+  };
+
+  /// Tutorial sudah ditutup di halaman ini.
+  bool _tutorialClosed = false;
+
+  void _closeTutorial() {
+    setState(() => _tutorialClosed = true);
+    ref.read(settingsProvider.notifier).markTutorialSeen();
+  }
+
+  Widget _target(TutorialTarget t, Widget child) =>
+      KeyedSubtree(key: _tutorialKeys[t], child: child);
+
   PuzzleRef get puzzleRef => widget.puzzleRef;
 
   @override
@@ -137,7 +155,14 @@ class _GameViewState extends ConsumerState<_GameView> {
       }
     }
 
-    return Scaffold(
+    // Tutorial otomatis hanya saat pertama kali bermain (pengaturan sudah
+    // termuat dan tutorial belum pernah dilihat).
+    final firstPlay = ref.watch(
+      settingsProvider.select((a) => a.value?.tutorialSeen == false),
+    );
+    final showTutorial = firstPlay && !_tutorialClosed;
+
+    final scaffold = Scaffold(
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -147,20 +172,24 @@ class _GameViewState extends ConsumerState<_GameView> {
                 stage: state.stage,
                 slot: state.slot,
                 currentSolved: state.saved,
+                coinKey: _tutorialKeys[TutorialTarget.coins],
               ),
               const SizedBox(height: 8),
               Expanded(
                 child: Center(
-                  child: ZoomImage(
-                    source: puzzleImageSource(
-                      state.puzzle,
-                      ref.watch(imageBaseUrlProvider),
-                    ),
-                    scale: s.displayScale,
-                    focusX: state.puzzle.focusX,
-                    focusY: state.puzzle.focusY,
-                    onStatusChanged: (status) => controller.setImageReady(
-                      status == LevelImageStatus.loaded,
+                  child: _target(
+                    TutorialTarget.image,
+                    ZoomImage(
+                      source: puzzleImageSource(
+                        state.puzzle,
+                        ref.watch(imageBaseUrlProvider),
+                      ),
+                      scale: s.displayScale,
+                      focusX: state.puzzle.focusX,
+                      focusY: state.puzzle.focusY,
+                      onStatusChanged: (status) => controller.setImageReady(
+                        status == LevelImageStatus.loaded,
+                      ),
                     ),
                   ),
                 ),
@@ -168,18 +197,25 @@ class _GameViewState extends ConsumerState<_GameView> {
               const SizedBox(height: 12),
               _PointInfo(snapshot: s),
               const SizedBox(height: 12),
-              AnswerBoxes(
-                key: ValueKey('answer-${state.puzzle.id}'),
-                slots: s.slots,
-                onTap: controller.tapSlot,
-                shakeTrigger: s.wrongCount,
+              _target(
+                TutorialTarget.answerBoxes,
+                AnswerBoxes(
+                  key: ValueKey('answer-${state.puzzle.id}'),
+                  slots: s.slots,
+                  onTap: controller.tapSlot,
+                  shakeTrigger: s.wrongCount,
+                ),
               ),
               const SizedBox(height: 12),
-              LetterBoard(tiles: s.tiles, onTap: controller.tapTile),
+              _target(
+                TutorialTarget.letterBoard,
+                LetterBoard(tiles: s.tiles, onTap: controller.tapTile),
+              ),
               const SizedBox(height: 8),
               Row(
                 children: [
                   _ActionButton(
+                    key: _tutorialKeys[TutorialTarget.zoomOut],
                     icon: Icons.zoom_out_map,
                     label: 'Zoom Out',
                     cost: null,
@@ -187,6 +223,7 @@ class _GameViewState extends ConsumerState<_GameView> {
                   ),
                   const SizedBox(width: 8),
                   _ActionButton(
+                    key: _tutorialKeys[TutorialTarget.revealLetter],
                     icon: Icons.lightbulb_outline,
                     label: 'Buka Huruf',
                     cost: Economy.revealLetterCost,
@@ -196,8 +233,9 @@ class _GameViewState extends ConsumerState<_GameView> {
                   ),
                   const SizedBox(width: 8),
                   _ActionButton(
-                    icon: Icons.backspace_outlined,
-                    label: 'Hapus Huruf Salah',
+                    key: _tutorialKeys[TutorialTarget.removeWrong],
+                    icon: Icons.auto_fix_high_outlined,
+                    label: 'Hilangkan Huruf Salah',
                     cost: Economy.removeWrongCost,
                     onPressed: state.canRemoveWrong
                         ? () => useHint(controller.removeWrongLetters)
@@ -212,6 +250,16 @@ class _GameViewState extends ConsumerState<_GameView> {
       ),
       // Banner di ruang tetap 60dp, berjarak dari tombol hint, dengan SafeArea.
       bottomNavigationBar: const AdaptiveBannerAd(),
+    );
+
+    return Stack(
+      children: [
+        scaffold,
+        if (showTutorial)
+          Positioned.fill(
+            child: CoachMarks(targets: _tutorialKeys, onDone: _closeTutorial),
+          ),
+      ],
     );
   }
 
@@ -406,11 +454,13 @@ class _TopBar extends StatelessWidget {
     required this.stage,
     required this.slot,
     required this.currentSolved,
+    this.coinKey,
   });
 
   final int stage;
   final int slot;
   final bool currentSolved;
+  final Key? coinKey;
 
   @override
   Widget build(BuildContext context) {
@@ -436,7 +486,7 @@ class _TopBar extends StatelessWidget {
             ],
           ),
         ),
-        const CoinBadge(),
+        CoinBadge(key: coinKey),
       ],
     );
   }
@@ -525,6 +575,7 @@ class _PointInfo extends StatelessWidget {
 
 class _ActionButton extends StatelessWidget {
   const _ActionButton({
+    super.key,
     required this.icon,
     required this.label,
     required this.cost,

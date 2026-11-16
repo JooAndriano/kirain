@@ -30,6 +30,12 @@ class SettingsNotifier extends AsyncNotifier<AppSettings> {
       _update((s) => s.copyWith(soundEffects: on));
   Future<void> setVibration(bool on) =>
       _update((s) => s.copyWith(vibration: on));
+  Future<void> markTutorialSeen() =>
+      _update((s) => s.copyWith(tutorialSeen: true));
+
+  /// Tutorial tampil lagi saat pemain mulai bermain berikutnya.
+  Future<void> replayTutorial() =>
+      _update((s) => s.copyWith(tutorialSeen: false));
 
   Future<void> _update(AppSettings Function(AppSettings) change) async {
     final next = change(await future);

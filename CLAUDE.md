@@ -11,6 +11,7 @@
 - Level menyimpan nama file gambar (imageFile), bukan URL. URL = imageBaseUrl (Remote Config) + imageFile.
 - Progress level dikunci dengan Level.order (bukan indeks list). order unik, naik, tidak dipakai ulang.
 - Dummy levels hanya fallback saat Firestore gagal dan tidak ada cache. Gambar dummy = asset lokal.
+- Link eksternal hanya dibuka lewat LinkOpener (lib/services/link_opener.dart). Widget tidak memanggil url_launcher langsung. URL tetap (mis. Terms & Condition) disimpan di file itu.
 - Gambar online selalu lewat LevelImage widget (cached_network_image). Jangan memanggil Image.network langsung.
 - Folder tools/ berisi skrip admin. serviceAccountKey.json JANGAN pernah di-commit; pastikan ada di .gitignore.
 - Iklan hanya lewat lib/ads/ (AdManager, AdPolicy). Widget tidak memanggil google_mobile_ads langsung.

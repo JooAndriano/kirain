@@ -24,6 +24,22 @@ void main() {
     expect(await repo.load(), s);
   });
 
+  test(
+    'tutorialSeen: default false, tersimpan, data lama tanpa key -> false',
+    () async {
+      expect((await (await repoWith({})).load()).tutorialSeen, isFalse);
+
+      final repo = await repoWith({
+        LocalSettingsRepository.storageKey:
+            '{"music":false,"soundEffects":true,"vibration":true}',
+      });
+      expect(await repo.load(), const AppSettings(music: false));
+
+      await repo.save(const AppSettings(tutorialSeen: true));
+      expect((await repo.load()).tutorialSeen, isTrue);
+    },
+  );
+
   test('data rusak kembali ke default', () async {
     final repo = await repoWith({LocalSettingsRepository.storageKey: '{oops'});
     expect(await repo.load(), const AppSettings());

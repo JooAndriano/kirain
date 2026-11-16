@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kirain/data/app_settings.dart';
 import 'package:kirain/data/settings_repository.dart';
 import 'package:kirain/services/game_audio.dart';
+import 'package:kirain/services/link_opener.dart';
 import 'package:kirain/state/settings_providers.dart';
 import 'package:kirain/ui/widgets/settings_dialog.dart';
 
@@ -41,6 +42,16 @@ void main() {
     await c.read(settingsProvider.notifier).setVibration(false);
     expect(repo.saved, const AppSettings(music: false, vibration: false));
     expect(c.read(settingsProvider).value, repo.saved);
+  });
+
+  test('markTutorialSeen tersimpan tanpa mengubah pengaturan lain', () async {
+    final repo = _MemRepo(const AppSettings(music: false));
+    final c = ProviderContainer.test(
+      overrides: [settingsRepositoryProvider.overrideWithValue(repo)],
+    );
+    await c.read(settingsProvider.future);
+    await c.read(settingsProvider.notifier).markTutorialSeen();
+    expect(repo.saved, const AppSettings(music: false, tutorialSeen: true));
   });
 
   Future<(GameFeedback, _SpyAudio, _SpyHaptics)> feedbackWith(
@@ -94,4 +105,50 @@ void main() {
     expect(repo.saved.soundEffects, isTrue);
     expect(repo.saved.vibration, isTrue);
   });
+
+  Future<_SpyLinkOpener> pumpWithOpener(
+    WidgetTester tester, {
+    required bool succeed,
+  }) async {
+    final opener = _SpyLinkOpener(succeed);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsRepositoryProvider.overrideWithValue(_MemRepo()),
+          linkOpenerProvider.overrideWithValue(opener),
+        ],
+        child: const MaterialApp(home: Scaffold(body: SettingsDialog())),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Terms & Condition'));
+    await tester.pumpAndSettle();
+    return opener;
+  }
+
+  testWidgets('dialog pengaturan: Terms & Condition membuka link', (
+    tester,
+  ) async {
+    final opener = await pumpWithOpener(tester, succeed: true);
+    expect(opener.opened, [
+      Uri.parse('https://jivottama.dev/kirain/termsandcondition'),
+    ]);
+    expect(find.text('Tidak bisa membuka halaman.'), findsNothing);
+  });
+
+  testWidgets('dialog pengaturan: link gagal dibuka -> pesan', (tester) async {
+    await pumpWithOpener(tester, succeed: false);
+    expect(find.text('Tidak bisa membuka halaman.'), findsOneWidget);
+  });
+}
+
+class _SpyLinkOpener implements LinkOpener {
+  _SpyLinkOpener(this.succeed);
+  final bool succeed;
+  final opened = <Uri>[];
+  @override
+  Future<bool> open(Uri url) async {
+    opened.add(url);
+    return succeed;
+  }
 }

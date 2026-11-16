@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../ads/ad_manager.dart';
+import '../../services/link_opener.dart';
 import '../../state/settings_providers.dart';
 import '../theme.dart';
 
@@ -72,6 +73,25 @@ class SettingsDialog extends ConsumerWidget {
                 ads.showPrivacyOptions();
               },
             ),
+          ListTile(
+            leading: const Icon(
+              Icons.description_outlined,
+              color: KirainColors.primary,
+            ),
+            title: const Text('Terms & Condition'),
+            trailing: const Icon(Icons.open_in_new_rounded, size: 18),
+            onTap: () async {
+              final messenger = ScaffoldMessenger.maybeOf(context);
+              final ok = await ref
+                  .read(linkOpenerProvider)
+                  .open(termsAndConditionsUrl);
+              if (!ok) {
+                messenger?.showSnackBar(
+                  const SnackBar(content: Text('Tidak bisa membuka halaman.')),
+                );
+              }
+            },
+          ),
         ],
       ),
       actions: [
