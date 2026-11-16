@@ -47,4 +47,35 @@ void main() {
     await tester.tap(find.text('U'));
     expect(tapped, [1]);
   });
+
+  testWidgets('AnswerBoxes: jawaban panjang dipecah menjadi 2 baris', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    final slots = [for (final c in 'BAWANGPUTIH'.split('')) SlotView(letter: c)];
+    final tapped = <int>[];
+    await tester.pumpWidget(wrap(AnswerBoxes(slots: slots, onTap: tapped.add)));
+
+    expect(find.byType(Row), findsNWidgets(2));
+    // 'B' di baris pertama, 'U' (indeks 7) di baris kedua.
+    final b = tester.getCenter(find.text('B'));
+    final u = tester.getCenter(find.text('U'));
+    expect(u.dy, greaterThan(b.dy));
+    await tester.tap(find.text('U'));
+    expect(tapped, [7]);
+  });
+
+  testWidgets('AnswerBoxes: jawaban pendek tetap 1 baris', (tester) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    final slots = [for (final c in 'KUDA'.split('')) SlotView(letter: c)];
+    await tester.pumpWidget(wrap(AnswerBoxes(slots: slots, onTap: (_) {})));
+
+    expect(find.byType(Row), findsOneWidget);
+  });
 }

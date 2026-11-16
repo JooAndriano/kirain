@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import '../../domain/game_engine.dart';
 import '../theme.dart';
 
+/// Ukuran kotak terkecil sebelum jawaban dipecah menjadi 2 baris.
+const double _minBoxSize = 40;
+
 /// Baris kotak jawaban. Bergoyang setiap [shakeTrigger] berubah.
 class AnswerBoxes extends StatefulWidget {
   const AnswerBoxes({
@@ -56,18 +59,38 @@ class _AnswerBoxesState extends State<AnswerBoxes>
         builder: (context, constraints) {
           const gap = 6.0;
           final n = widget.slots.length;
-          final size = min(kMinTap, (constraints.maxWidth - gap * (n - 1)) / n);
-          return Row(
+          double fit(int perRow) => min(
+            kMinTap,
+            (constraints.maxWidth - gap * (perRow - 1)) / perRow,
+          );
+
+          // Jawaban panjang dipecah menjadi 2 baris agar kotak tidak terlalu
+          // kecil. Baris pertama mendapat sisa huruf bila jumlahnya ganjil.
+          final twoRows = n > 1 && fit(n) < _minBoxSize;
+          final perRow = twoRows ? (n + 1) ~/ 2 : n;
+          final size = fit(perRow);
+
+          Widget row(int start, int end) => Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              for (var i = 0; i < n; i++) ...[
-                if (i > 0) const SizedBox(width: gap),
+              for (var i = start; i < end; i++) ...[
+                if (i > start) const SizedBox(width: gap),
                 _Box(
                   slot: widget.slots[i],
                   size: size,
                   onTap: () => widget.onTap(i),
                 ),
               ],
+            ],
+          );
+
+          if (!twoRows) return row(0, n);
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              row(0, perRow),
+              const SizedBox(height: gap),
+              row(perRow, n),
             ],
           );
         },
@@ -102,11 +125,15 @@ class _Box extends StatelessWidget {
           border: Border.all(color: KirainColors.boxBorder, width: 2),
           boxShadow: slot.isEmpty ? null : kSoftShadow,
         ),
-        child: Text(
-          slot.letter ?? '',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: KirainColors.text,
+        padding: const EdgeInsets.all(4),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            slot.letter ?? '',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: KirainColors.text,
+            ),
           ),
         ),
       ),
